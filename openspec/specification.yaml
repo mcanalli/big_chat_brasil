@@ -1,0 +1,78 @@
+# OpenSpec - Big Chat Brasil (BCB)
+# Versão: 1.0.0
+
+schemas:
+  Client:
+    type: object
+    properties:
+      id: { type: string, format: uuid }
+      name: { type: string }
+      identifier: { type: string, description: "CPF ou CNPJ" }
+      type: { type: string, enum: [PRE_PAID, POST_PAID] }
+      balance: { type: number, description: "Saldo para Pré-pago" }
+      limit: { type: number, description: "Limite mensal para Pós-pago" }
+      consumed: { type: number, description: "Consumo atual no mês para Pós-pago" }
+
+  Message:
+    type: object
+    properties:
+      id: { type: string, format: uuid }
+      clientId: { type: string, format: uuid }
+      conversationId: { type: string, format: uuid }
+      content: { type: string }
+      urgency: { type: string, enum: [NORMAL, URGENT] }
+      status: { type: string, enum: [queued, processing, sent, delivered, read, failed] }
+      cost: { type: number }
+      createdAt: { type: string, format: date-time }
+
+api:
+  auth:
+    POST /auth/login:
+      summary: Autenticação por CPF/CNPJ
+      body: { identifier: string }
+      responses:
+        200: { token: string, client: Client }
+        401: Unauthorized
+
+  messages:
+    POST /messages:
+      summary: Envio de nova mensagem
+      body:
+        conversationId: string
+        content: string
+        urgency: string
+      responses:
+        202: Message (Status: queued)
+        402: Payment Required (Saldo/Limite insuficiente)
+
+    GET /messages/{id}:
+      summary: Consulta status da mensagem
+      responses:
+        200: Message
+
+queues:
+  rabbitmq:
+    exchanges:
+      - name: bcb.messages.direct
+        type: direct
+    queues:
+      - name: bcb.messages.urgent
+        routingKey: urgent
+        priority: 10
+        dlq: bcb.messages.dlq
+      - name: bcb.messages.normal
+        routingKey: normal
+        priority: 5
+        dlq: bcb.messages.dlq
+    policies:
+      antiStarvation:
+        ratio: "3:1" # Consome 3 urgentes para cada 1 normal
+
+cache:
+  redis:
+    keys:
+      balance: "balance:{clientId}"
+      session: "session:{token}"
+    ttl:
+      balance: 300 # 5 min (write-through)
+      session: 3600 # 1 hour
