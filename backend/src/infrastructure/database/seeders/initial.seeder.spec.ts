@@ -15,6 +15,7 @@ describe('InitialSeeder', () => {
       rollbackTransaction: jest.fn().mockResolvedValue(null),
       release: jest.fn().mockResolvedValue(null),
       manager: {
+        findOne: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation((entity, data) => ({ id: 'generated-uuid', ...data })),
         save: jest.fn().mockResolvedValue(null),
       } as any,
@@ -45,14 +46,14 @@ describe('InitialSeeder', () => {
 
     expect(queryRunner.connect).toHaveBeenCalled();
     expect(queryRunner.startTransaction).toHaveBeenCalled();
-    expect(queryRunner.manager.create).toHaveBeenCalled();
-    expect(queryRunner.manager.save).toHaveBeenCalled();
+    expect(queryRunner.manager?.create).toHaveBeenCalled();
+    expect(queryRunner.manager?.save).toHaveBeenCalled();
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(queryRunner.release).toHaveBeenCalled();
   });
 
   it('should rollback transaction on error', async () => {
-    (queryRunner.manager.save as jest.Mock).mockRejectedValueOnce(new Error('Save failed'));
+    (queryRunner.manager?.save as jest.Mock).mockRejectedValueOnce(new Error('Save failed'));
 
     await expect(seeder.seed()).rejects.toThrow('Save failed');
 

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { ConversationEntity } from '../../domain/entities/conversation.entity';
 import { ClientEntity } from '../../domain/entities/client.entity';
 
@@ -13,25 +13,32 @@ export class ConversationService {
     private readonly clientRepo: Repository<ClientEntity>,
   ) {}
 
-  async findOrCreate(clientId: string, recipientPhone: string, recipientName?: string): Promise<ConversationEntity> {
-    let conversation = await this.conversationRepo.findOne({
+  async findOrCreate(
+    clientId: string,
+    recipientPhone: string,
+    recipientName?: string,        // 3º Parâmetro: Nome do destinatário (string)
+    entityManager?: EntityManager, // 4º Parâmetro: Manager da transação (opcional)
+  ): Promise<ConversationEntity> {
+    const manager = entityManager || this.conversationRepo.manager;
+
+    let conversation = await manager.findOne(ConversationEntity, {
       where: { clientId, recipientPhone },
     });
 
     if (!conversation) {
-      const client = await this.clientRepo.findOne({ where: { id: clientId } });
+      const client = await manager.findOne(ClientEntity, { where: { id: clientId } });
       if (!client) throw new NotFoundException('Client not found');
 
-      conversation = this.conversationRepo.create({
+      conversation = manager.create(ConversationEntity, {
         clientId,
         recipientPhone,
         recipientName,
         unreadCount: 0,
       });
-      await this.conversationRepo.save(conversation);
+      await manager.save(conversation);
     } else if (recipientName && conversation.recipientName !== recipientName) {
       conversation.recipientName = recipientName;
-      await this.conversationRepo.save(conversation);
+      await manager.save(conversation);
     }
 
     return conversation;

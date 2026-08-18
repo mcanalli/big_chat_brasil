@@ -9,7 +9,6 @@ import { DataSource } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { QueueService } from '../../infrastructure/queue/queue.service';
 
-
 describe('MessageService', () => {
   let service: MessageService;
   let clientRepo: any;
@@ -22,9 +21,11 @@ describe('MessageService', () => {
     commitTransaction: jest.fn(),
     rollbackTransaction: jest.fn(),
     release: jest.fn(),
+    isTransactionActive: true,
     manager: {
       findOne: jest.fn(),
       save: jest.fn(),
+      create: jest.fn().mockImplementation((entity, dto) => ({ id: 'generated-id', ...dto })),
     },
   };
 
@@ -58,9 +59,8 @@ describe('MessageService', () => {
         },
         {
           provide: QueueService,
-          useValue: { publishMessage: jest.fn() },
+          useValue: { publishMessage: jest.fn().mockResolvedValue(null) },
         },
-
       ],
     }).compile();
 

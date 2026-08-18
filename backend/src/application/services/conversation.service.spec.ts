@@ -17,8 +17,21 @@ describe('ConversationService', () => {
       create: jest.fn().mockImplementation(dto => dto),
       save: jest.fn().mockImplementation(async dto => ({ id: 'new-id', ...dto })),
     };
+
     clientRepo = {
       findOne: jest.fn(),
+    };
+
+    // Adiciona o manager no mock do repositório
+    repo.manager = {
+      findOne: jest.fn().mockImplementation((entity, options) => {
+        if (entity === ClientEntity) {
+          return clientRepo.findOne(options);
+        }
+        return repo.findOne(options);
+      }),
+      create: jest.fn().mockImplementation((entity, dto) => repo.create(dto)),
+      save: jest.fn().mockImplementation(async entity => repo.save(entity)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -70,4 +83,3 @@ describe('ConversationService', () => {
     await expect(service.findById('1')).rejects.toThrow(NotFoundException);
   });
 });
-

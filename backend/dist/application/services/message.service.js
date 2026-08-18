@@ -37,40 +37,50 @@ let MessageService = class MessageService {
         this.dataSource = dataSource;
     }
     async sendMessage(dto) {
+        console.log('[STEP 1] Início do processamento de sendMessage', { dto });
         const queryRunner = this.dataSource.createQueryRunner();
+        console.log('[STEP 2] Conectando QueryRunner ao Pool do Postgres');
         await queryRunner.connect();
+        console.log('[STEP 3] Iniciando Transação SQL');
         await queryRunner.startTransaction();
         try {
+            console.log('[STEP 4] Buscando cliente com Lock Pessimista (pessimistic_write)', { senderId: dto.senderId });
             const client = await queryRunner.manager.findOne(client_entity_1.ClientEntity, {
                 where: { id: dto.senderId },
                 lock: { mode: 'pessimistic_write' },
             });
             if (!client) {
+                console.log('[STEP 4.1] Erro: Cliente não encontrado');
                 throw new common_1.NotFoundException('Client not found');
             }
             const cost = dto.channel === 'WHATSAPP' ? 0.05 : 0.1;
+            console.log('[STEP 5] Validando saldo/limite do cliente', { planType: client.planType, balance: client.balance, cost });
             if (client.planType === 'prepaid') {
                 if (Number(client.balance) < cost) {
+                    console.log('[STEP 5.1] Erro: Saldo insuficiente');
                     throw new common_1.HttpException('Insufficient balance', common_1.HttpStatus.PAYMENT_REQUIRED);
                 }
                 client.balance = Number(client.balance) - cost;
             }
             else {
                 if (Number(client.consumed) + cost > Number(client.limit)) {
+                    console.log('[STEP 5.1] Erro: Limite mensal excedido');
                     throw new common_1.HttpException('Monthly limit exceeded', common_1.HttpStatus.PAYMENT_REQUIRED);
                 }
                 client.consumed = Number(client.consumed) + cost;
             }
-            await queryRunner.manager.save(client);
-            const conversation = await this.conversationService.findOrCreate(client.id, dto.recipientPhone, dto.recipientName);
-            const message = this.messageRepo.create({
+            console.log('[STEP 6] Buscando ou criando conversa via ConversationService');
+            const conversation = await this.conversationService.findOrCreate(client.id, dto.recipientPhone, dto.recipientName, queryRunner.manager);
+            console.log('[STEP 7] Persistindo entidade da Mensagem');
+            const message = queryRunner.manager.create(message_entity_1.MessageEntity, {
                 ...dto,
                 conversationId: conversation.id,
                 cost,
                 status: 'queued',
             });
             const savedMessage = await queryRunner.manager.save(message);
-            const history = this.statusHistoryRepo.create({
+            console.log('[STEP 8] Atualizando histórico e dados da conversa');
+            const history = queryRunner.manager.create(message_status_history_entity_1.MessageStatusHistoryEntity, {
                 messageId: savedMessage.id,
                 status: 'queued',
                 details: 'Message queued for sending',
@@ -79,15 +89,28 @@ let MessageService = class MessageService {
             conversation.lastMessageContent = dto.content;
             conversation.lastMessageTime = new Date();
             await queryRunner.manager.save(conversation);
+            console.log('[STEP 8.1] Atualizando saldo/consumo do cliente');
+            await queryRunner.manager.save(client);
+            console.log('[STEP 9] Executando Commit da Transação');
             await queryRunner.commitTransaction();
-            await this.queueService.publishMessage(savedMessage);
+            console.log('[STEP 10] Commit executado com sucesso');
+            console.log('[STEP 11] Disparando evento assíncrono para o RabbitMQ');
+            this.queueService.publishMessage(savedMessage).catch((err) => {
+                console.error('[MQ ERROR] Falha ao publicar mensagem no RabbitMQ:', err);
+            });
+            console.log('[STEP 12] Retornando resposta ao Controller');
             return savedMessage;
         }
         catch (err) {
-            await queryRunner.rollbackTransaction();
+            console.error('[STEP ERROR] Ocorreu um erro na transação:', err.message);
+            if (queryRunner.isTransactionActive) {
+                console.log('[STEP ROLLBACK] Efetuando rollback da transação');
+                await queryRunner.rollbackTransaction();
+            }
             throw err;
         }
         finally {
+            console.log('[STEP FINALLY] Liberando QueryRunner de volta para o Pool');
             await queryRunner.release();
         }
     }
