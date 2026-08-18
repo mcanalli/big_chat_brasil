@@ -1,0 +1,12 @@
+# Dependências
+**/node_modules/
+
+# Compilação e Builds
+**/dist/
+**/build/
+**/.angular/
+
+# Outros
+.env
+*.log
+.DS_Store

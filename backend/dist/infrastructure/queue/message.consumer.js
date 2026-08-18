@@ -11,37 +11,91 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var MessageConsumer_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageConsumer = void 0;
 const common_1 = require("@nestjs/common");
 const microservices_1 = require("@nestjs/microservices");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
-const message_entity_1 = require("../database/entities/message.entity");
-let MessageConsumer = class MessageConsumer {
+const message_entity_1 = require("../../domain/entities/message.entity");
+const message_status_history_entity_1 = require("../../domain/entities/message-status-history.entity");
+let MessageConsumer = MessageConsumer_1 = class MessageConsumer {
     messageRepo;
-    constructor(messageRepo) {
+    statusHistoryRepo;
+    dataSource;
+    logger = new common_1.Logger(MessageConsumer_1.name);
+    urgentCounter = 0;
+    constructor(messageRepo, statusHistoryRepo, dataSource) {
         this.messageRepo = messageRepo;
+        this.statusHistoryRepo = statusHistoryRepo;
+        this.dataSource = dataSource;
     }
-    async handleMessageProcess(data) {
-        console.log('Processing message:', data.id);
-        await this.messageRepo.update(data.id, { status: message_entity_1.MessageStatus.PROCESSING });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        await this.messageRepo.update(data.id, { status: message_entity_1.MessageStatus.SENT });
-        console.log('Message sent:', data.id);
+    async handleUrgentMessage(data, context) {
+        this.logger.log(`Received URGENT message: ${data.id}`);
+        await this.processMessage(data);
+        this.urgentCounter++;
+    }
+    async handleNormalMessage(data, context) {
+        this.logger.log(`Received NORMAL message: ${data.id}`);
+        await this.processMessage(data);
+        this.urgentCounter = 0;
+    }
+    async processMessage(data) {
+        const messageId = data.id;
+        await this.updateStatus(messageId, 'processing', 'Message is being processed by worker');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await this.updateStatus(messageId, 'sent', 'Message successfully sent to gateway');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await this.updateStatus(messageId, 'delivered', 'Message delivered to recipient device');
+    }
+    async updateStatus(messageId, status, details) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await queryRunner.manager.update(message_entity_1.MessageEntity, messageId, { status });
+            const history = this.statusHistoryRepo.create({
+                messageId,
+                status,
+                details,
+            });
+            await queryRunner.manager.save(history);
+            await queryRunner.commitTransaction();
+            this.logger.debug(`Status updated: ${messageId} -> ${status}`);
+        }
+        catch (err) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(`Failed to update status for ${messageId}`, err.stack);
+        }
+        finally {
+            await queryRunner.release();
+        }
     }
 };
 exports.MessageConsumer = MessageConsumer;
 __decorate([
-    (0, microservices_1.EventPattern)({ cmd: 'process_message' }),
+    (0, microservices_1.EventPattern)('bcb.messages.urgent'),
     __param(0, (0, microservices_1.Payload)()),
+    __param(1, (0, microservices_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, microservices_1.RmqContext]),
     __metadata("design:returntype", Promise)
-], MessageConsumer.prototype, "handleMessageProcess", null);
-exports.MessageConsumer = MessageConsumer = __decorate([
+], MessageConsumer.prototype, "handleUrgentMessage", null);
+__decorate([
+    (0, microservices_1.EventPattern)('bcb.messages.normal'),
+    __param(0, (0, microservices_1.Payload)()),
+    __param(1, (0, microservices_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, microservices_1.RmqContext]),
+    __metadata("design:returntype", Promise)
+], MessageConsumer.prototype, "handleNormalMessage", null);
+exports.MessageConsumer = MessageConsumer = MessageConsumer_1 = __decorate([
     (0, common_1.Controller)(),
     __param(0, (0, typeorm_1.InjectRepository)(message_entity_1.MessageEntity)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(message_status_history_entity_1.MessageStatusHistoryEntity)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.DataSource])
 ], MessageConsumer);
 //# sourceMappingURL=message.consumer.js.map

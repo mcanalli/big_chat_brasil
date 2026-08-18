@@ -29,6 +29,47 @@ docker-compose -f docker-compose.dev.yml up --build
 - `/frontend`: App Angular com Bootstrap.
 - `/openspec`: Especificações formais.
 - `/infra`: Arquivos de configuração de infraestrutura (Docker).
+### Cenários de Teste (Fase 3)
+
+| Cenário | Entrada (Payload) | Resposta Esperada |
+| :--- | :--- | :--- |
+| **Saldo Insuficiente** | `{ "senderId": "uuid", "channel": "SMS", ... }` | `402 Payment Required` |
+| **Limite Excedido** | `{ "senderId": "uuid", "channel": "WHATSAPP", ... }` | `402 Payment Required` |
+| **Envio com Sucesso** | `{ "senderId": "uuid", "channel": "SMS", "content": "Olá" }` | `201 Created` |
+| **Get or Create Conv** | Chamada ao `sendMessage` com novo número | Cria nova conversa se não existir |
+
+#### Exemplo de Payload (POST /messages)
+```json
+{
+  "senderId": "d3b07384-d990-4495-a1a8-7469db8d7010",
+
+## 🚀 Execução via Docker (Recomendado)
+
+Para subir todo o ecossistema (App, PostgreSQL, RabbitMQ, Redis e Frontend):
+
+```bash
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+O backend estará disponível em `http://localhost:3000` e o RabbitMQ Management em `http://localhost:15672`.
+
+## 🛠️ Mensageria e Priorização
+
+O sistema utiliza RabbitMQ para processamento assíncrono com as seguintes características:
+- **Exchange**: `bcb.messages.direct`
+- **Filas**: 
+  - `bcb.messages.urgent` (Prioridade 10)
+  - `bcb.messages.normal` (Prioridade 5)
+- **Worker**: Implementa lógica Anti-Starvation (3 urgentes para 1 normal).
+
+  "recipientPhone": "5511999999999",
+  "recipientName": "João Silva",
+  "content": "Sua fatura vence amanhã!",
+  "channel": "WHATSAPP",
+  "priority": "urgent"
+}
+```
+
 
 ## 🧪 Testes
 

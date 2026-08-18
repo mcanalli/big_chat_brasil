@@ -10,31 +10,37 @@ exports.QueueModule = void 0;
 const common_1 = require("@nestjs/common");
 const microservices_1 = require("@nestjs/microservices");
 const queue_service_1 = require("./queue.service");
+const queue_controller_1 = require("../../presentation/controllers/queue.controller");
 const message_consumer_1 = require("./message.consumer");
 const typeorm_1 = require("@nestjs/typeorm");
-const message_entity_1 = require("../database/entities/message.entity");
+const message_entity_1 = require("../../domain/entities/message.entity");
+const message_status_history_entity_1 = require("../../domain/entities/message-status-history.entity");
 let QueueModule = class QueueModule {
 };
 exports.QueueModule = QueueModule;
 exports.QueueModule = QueueModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([message_entity_1.MessageEntity]),
+            typeorm_1.TypeOrmModule.forFeature([message_entity_1.MessageEntity, message_status_history_entity_1.MessageStatusHistoryEntity]),
             microservices_1.ClientsModule.register([
                 {
-                    name: 'MESSAGE_SERVICE',
+                    name: 'RABBITMQ_SERVICE',
                     transport: microservices_1.Transport.RMQ,
                     options: {
                         urls: [process.env.RABBITMQ_URI || 'amqp://bcb_mq_user:bcb_mq_password@localhost:5672'],
                         queue: 'bcb.messages.normal',
                         queueOptions: {
                             durable: true,
+                            arguments: {
+                                'x-max-priority': 5,
+                            },
                         },
                     },
                 },
             ]),
         ],
         providers: [queue_service_1.QueueService, message_consumer_1.MessageConsumer],
+        controllers: [queue_controller_1.QueueController],
         exports: [queue_service_1.QueueService],
     })
 ], QueueModule);

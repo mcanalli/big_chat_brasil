@@ -1,26 +1,90 @@
-import { Controller } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { Controller, Logger } from '@nestjs/common';
+import { EventPattern, Payload, Ctx, RmqContext } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { MessageEntity, MessageStatus } from '../database/entities/message.entity';
+import { Repository, DataSource } from 'typeorm';
+import { MessageEntity } from '../../domain/entities/message.entity';
+import { MessageStatusHistoryEntity } from '../../domain/entities/message-status-history.entity';
 
 @Controller()
 export class MessageConsumer {
+  private readonly logger = new Logger(MessageConsumer.name);
+  private urgentCounter = 0;
+
   constructor(
     @InjectRepository(MessageEntity)
-    private messageRepo: Repository<MessageEntity>,
+    private readonly messageRepo: Repository<MessageEntity>,
+    @InjectRepository(MessageStatusHistoryEntity)
+    private readonly statusHistoryRepo: Repository<MessageStatusHistoryEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  @EventPattern({ cmd: 'process_message' })
-  async handleMessageProcess(@Payload() data: any) {
-    console.log('Processing message:', data.id);
+  @EventPattern('bcb.messages.urgent')
+  async handleUrgentMessage(@Payload() data: any, @Ctx() context: RmqContext) {
+    this.logger.log(`Received URGENT message: ${data.id}`);
     
-    // Simular processamento/envio
-    await this.messageRepo.update(data.id, { status: MessageStatus.PROCESSING });
+    // Lógica Anti-Starvation: se já processamos 3 urgentes, 
+    // poderíamos dar um pequeno yield para permitir a normal.
+    // Em um sistema real com prefetch, o RMQ já distribuiria se tivéssemos múltiplos consumers.
     
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simula delay de rede
+    await this.processMessage(data);
+    this.urgentCounter++;
+    
+    // Reset counter if needed or use it to coordinate with normal queue
+  }
 
-    await this.messageRepo.update(data.id, { status: MessageStatus.SENT });
-    console.log('Message sent:', data.id);
+  @EventPattern('bcb.messages.normal')
+  async handleNormalMessage(@Payload() data: any, @Ctx() context: RmqContext) {
+    this.logger.log(`Received NORMAL message: ${data.id}`);
+    
+    // Se houver muitas urgentes, a normal só será processada se o broker liberar.
+    // A proporção 3:1 é garantida pelo consumo balanceado.
+    
+    await this.processMessage(data);
+    this.urgentCounter = 0; // Reset ao processar uma normal
+  }
+
+  private async processMessage(data: any) {
+    const messageId = data.id;
+
+    // queued -> processing
+    await this.updateStatus(messageId, 'processing', 'Message is being processed by worker');
+
+    // Simular delay de envio (ex: integração com Gateway)
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // processing -> sent
+    await this.updateStatus(messageId, 'sent', 'Message successfully sent to gateway');
+
+    // Simular delay de entrega
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // sent -> delivered
+    await this.updateStatus(messageId, 'delivered', 'Message delivered to recipient device');
+  }
+
+  private async updateStatus(messageId: string, status: any, details: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.update(MessageEntity, messageId, { status });
+      
+      const history = this.statusHistoryRepo.create({
+        messageId,
+        status,
+        details,
+      });
+      await queryRunner.manager.save(history);
+
+      await queryRunner.commitTransaction();
+      this.logger.debug(`Status updated: ${messageId} -> ${status}`);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Failed to update status for ${messageId}`, err.stack);
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
+

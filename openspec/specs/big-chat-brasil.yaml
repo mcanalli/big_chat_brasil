@@ -1,0 +1,221 @@
+version: '1.2.0'
+info:
+  title: Big Chat Brasil (BCB) API Specification
+  description: Especificação técnica backend consolidada com schemas, endpoints, chaves estrangeiras e detalhamento completo de regras de negócio.
+
+schemas:
+  Client:
+    type: object
+    description: Representa a empresa ou pessoa física cliente da plataforma BCB.
+    properties:
+      id: { type: string, format: uuid, description: "PK do cliente" }
+      name: { type: string, description: "Razão social ou nome completo" }
+      documentId: { type: string, description: "CPF ou CNPJ sem formatação" }
+      documentType: { type: string, enum: [CPF, CNPJ], description: "Tipo de documento do cliente" }
+      planType: { type: string, enum: [prepaid, postpaid], description: "Modalidade do plano contratado" }
+      balance: { type: number, description: "Saldo disponível para uso (plano pré-pago)" }
+      limit: { type: number, description: "Limite de crédito mensal (plano pós-pago)" }
+      consumed: { type: number, description: "Consumo acumulado no mês corrente (plano pós-pago)" }
+      active: { type: boolean, default: true, description: "Indica se o cliente está ativo no sistema" }
+
+  Conversation:
+    type: object
+    description: Thread de conversa agrupando interações entre o cliente e um usuário final.
+    properties:
+      id: { type: string, format: uuid, description: "PK da conversa" }
+      clientId: { type: string, format: uuid, description: "FK -> Client.id" }
+      recipientPhone: { type: string, description: "Número de telefone do destinatário (com DDD)" }
+      recipientName: { type: string, description: "Nome/identificação do destinatário final" }
+      lastMessageContent: { type: string, description: "Conteúdo da última mensagem trafegada" }
+      lastMessageTime: { type: string, format: date-time, description: "Timestamp da última mensagem" }
+      unreadCount: { type: integer, default: 0, description: "Quantidade de mensagens não lidas" }
+    foreignKeys:
+      - field: clientId
+        references: Client.id
+        onDelete: CASCADE
+
+  Message:
+    type: object
+    description: Registro individual do envio de mensagem.
+    properties:
+      id: { type: string, format: uuid, description: "PK da mensagem" }
+      conversationId: { type: string, format: uuid, description: "FK -> Conversation.id" }
+      senderId: { type: string, format: uuid, description: "FK -> Client.id" }
+      recipientPhone: { type: string, description: "Telefone de destino da mensagem" }
+      channel: { type: string, enum: [SMS, WHATSAPP], description: "Canal de envio" }
+      content: { type: string, description: "Texto da mensagem" }
+      timestamp: { type: string, format: date-time, description: "Data/hora da solicitação de envio" }
+      priority: { type: string, enum: [normal, urgent], description: "Prioridade na fila de envio" }
+      status: { type: string, enum: [queued, processing, sent, delivered, read, failed], description: "Estado atual no ciclo de vida" }
+      cost: { type: number, description: "Custo cobrado pelo disparo (R$ 0,25 ou R$ 0,50)" }
+    foreignKeys:
+      - field: conversationId
+        references: Conversation.id
+        onDelete: CASCADE
+      - field: senderId
+        references: Client.id
+        onDelete: RESTRICT
+
+  MessageStatusHistory:
+    type: object
+    description: Registro de auditoria das transições de status da mensagem.
+    properties:
+      id: { type: string, format: uuid, description: "PK do histórico" }
+      messageId: { type: string, format: uuid, description: "FK -> Message.id" }
+      status: { type: string, enum: [queued, processing, sent, delivered, read, failed] }
+      timestamp: { type: string, format: date-time }
+      details: { type: string, description: "Detalhes ou motivo de falha no envio" }
+    foreignKeys:
+      - field: messageId
+        references: Message.id
+        onDelete: CASCADE
+
+  FinancialTransaction:
+    type: object
+    description: Extrato de movimentações financeiras do cliente.
+    properties:
+      id: { type: string, format: uuid, description: "PK da transação" }
+      clientId: { type: string, format: uuid, description: "FK -> Client.id" }
+      type: { type: string, enum: [CREDIT_PURCHASE, INVOICE_PAYMENT, MESSAGE_DEBIT, PLAN_CONVERSION, ADJUSTMENT] }
+      amount: { type: number, description: "Valor financeiro transacionado" }
+      previousBalance: { type: number, description: "Saldo ou consumo prévio" }
+      newBalance: { type: number, description: "Novo saldo ou consumo atualizado" }
+      description: { type: string, description: "Descrição ou justificativa da movimentação" }
+      timestamp: { type: string, format: date-time }
+    foreignKeys:
+      - field: clientId
+        references: Client.id
+        onDelete: RESTRICT
+
+# ==============================================================================
+# DETALHAMENTO DAS REGRAS DE NEGÓCIO DO SISTEMA
+# ==============================================================================
+rules:
+  clientValidation:
+    rule_01_active_status:
+      description: "Apenas clientes com 'active = true' podem realizar logins ou enviar mensagens."
+      errorCode: 403_FORBIDDEN
+    rule_02_document_uniqueness:
+      description: "O 'documentId' (CPF/CNPJ) deve ser único no sistema."
+      errorCode: 409_CONFLICT
+
+  pricingAndCosts:
+    rule_03_message_pricing:
+      normalPriorityCost: 0.25
+      urgentPriorityCost: 0.50
+      currency: "BRL"
+      description: "Mensagens com prioridade 'normal' custam R$ 0,25. Mensagens 'urgent' custam R$ 0,50."
+
+  financialOperations:
+    rule_04_prepaid_validation:
+      steps:
+        1: "Verificar se 'client.planType == prepaid'."
+        2: "Verificar se 'client.balance >= cost'."
+        3: "Caso insuficiente, rejeitar com HTTP 402 Payment Required."
+        4: "Caso suficiente, debitar 'cost' do 'balance'."
+        5: "Registrar registro em 'FinancialTransaction' com tipo 'MESSAGE_DEBIT'."
+        6: "Persistir a mensagem e enfileirar para envio."
+    
+    rule_05_postpaid_validation:
+      steps:
+        1: "Verificar se 'client.planType == postpaid'."
+        2: "Verificar se '(client.consumed + cost) <= client.limit'."
+        3: "Caso ultrapasse o limite, rejeitar com HTTP 402 Payment Required."
+        4: "Caso válido, somar 'cost' no atributo 'consumed'."
+        5: "Registrar registro em 'FinancialTransaction' com tipo 'MESSAGE_DEBIT'."
+        6: "Persistir a mensagem e enfileirar para envio."
+
+    rule_06_plan_conversion:
+      prepaidToPostpaid:
+        description: "Ao converter de Pré-pago para Pós-pago, o saldo residual 'balance' é zerado e convertido em crédito a ser abatido na fatura."
+      postpaidToPrepaid:
+        description: "Ao converter de Pós-pago para Pré-pago, exige-se o pagamento/quitação total do valor acumulado em 'consumed' antes de autorizar a conversão."
+
+  conversationHandling:
+    rule_07_get_or_create_conversation:
+      description: "No envio de mensagem via POST /messages:"
+      behavior:
+        case_a: "Se 'conversationId' for informado, valida se a conversa pertence ao cliente solicitante."
+        case_b: "Se 'conversationId' for omitido, busca conversa existente onde 'clientId' == cliente_autenticado e 'recipientPhone' == req.recipientPhone."
+        case_c: "Caso a conversa não exista, cria automaticamente uma nova 'Conversation' e vincula a mensagem criada."
+      postActions:
+        - "Atualizar 'lastMessageContent' com o texto enviado."
+        - "Atualizar 'lastMessageTime' com a data/hora atual."
+
+  messageLifecycle:
+    rule_08_status_transition:
+      flow: "queued -> processing -> sent -> delivered -> read"
+      failureFlow: "queued -> processing -> failed"
+      auditing: "Cada alteração de estado DEVE gravar um novo registro na tabela 'MessageStatusHistory'."
+
+  queuingAndPriority:
+    rule_09_anti_starvation:
+      ratio: "3:1 (A cada 3 mensagens urgentes processadas, o worker DEVE processar 1 mensagem normal caso exista na fila)."
+      queues:
+        urgentQueue: "bcb.messages.urgent (priority = 10)"
+        normalQueue: "bcb.messages.normal (priority = 5)"
+
+# ==============================================================================
+# ENDPOINTS DA API
+# ==============================================================================
+api:
+  auth:
+    POST /auth:
+      summary: Autenticação simplificada do cliente via CPF ou CNPJ
+
+  clients:
+    GET /clients:
+      summary: Lista clientes
+    POST /clients:
+      summary: Cadastra cliente
+    GET /clients/{id}:
+      summary: Consulta detalhes
+    PUT /clients/{id}:
+      summary: Atualiza cliente
+    GET /clients/{id}/balance:
+      summary: Consulta saldo e consumo
+
+  conversations:
+    POST /conversations:
+      summary: Inicializa explicitamente uma conversa (sem envio de mensagem inicial)
+    GET /conversations:
+      summary: Lista conversas do cliente autenticado
+    GET /conversations/{id}:
+      summary: Obtém detalhes de uma conversa
+    GET /conversations/{id}/messages:
+      summary: Lista o histórico de mensagens de uma conversa
+
+  messages:
+    POST /messages:
+      summary: Envia nova mensagem (executa validação financeira, resolve/cria conversa e enfileira)
+    GET /messages/report:
+      summary: Relatório de mensagens com filtro por Data/Hora, Status, Canal e Prioridade
+    GET /messages/{id}/history:
+      summary: Consulta histórico do ciclo de vida dos status da mensagem
+
+  admin:
+    POST /admin/clients/{id}/credits:
+      summary: Adiciona créditos (pré-pago)
+    PATCH /admin/clients/{id}/limit:
+      summary: Ajusta limite mensal (pós-pago)
+    POST /admin/clients/{id}/convert-plan:
+      summary: Converte entre os planos pré-pago e pós-pago
+    GET /admin/clients/{id}/transactions:
+      summary: Consulta extrato de transações financeiras
+
+  queue:
+    GET /queue/status:
+      summary: Estatísticas em tempo real do processamento de filas
+
+queues:
+  rabbitmq:
+    exchanges:
+      - name: bcb.messages.direct
+        type: direct
+    queues:
+      - name: bcb.messages.urgent
+        routingKey: urgent
+        priority: 10
+      - name: bcb.messages.normal
+        routingKey: normal
+        priority: 5

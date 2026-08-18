@@ -21,14 +21,14 @@ let QueueService = class QueueService {
         this.client = client;
     }
     async publishMessage(message) {
-        const pattern = { cmd: 'process_message' };
+        const pattern = message.priority === 'urgent' ? 'bcb.messages.urgent' : 'bcb.messages.normal';
         return this.client.emit(pattern, message);
     }
 };
 exports.QueueService = QueueService;
 exports.QueueService = QueueService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, common_1.Inject)('MESSAGE_SERVICE')),
+    __param(0, (0, common_1.Inject)('RABBITMQ_SERVICE')),
     __metadata("design:paramtypes", [microservices_1.ClientProxy])
 ], QueueService);
 //# sourceMappingURL=queue.service.js.map
