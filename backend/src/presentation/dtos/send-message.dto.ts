@@ -11,7 +11,7 @@ export class SendMessageDto {
   @ApiProperty({ description: 'ID do cliente remetente' })
   @IsUUID()
   @IsNotEmpty()
-  senderId: string;
+  senderId!: string;
 
   @ApiProperty({
     description: 'Número do destinatário (com DDD)',
@@ -19,7 +19,7 @@ export class SendMessageDto {
   })
   @IsString()
   @IsNotEmpty()
-  recipientPhone: string;
+  recipientPhone!: string;
 
   @ApiPropertyOptional({ description: 'Nome do destinatário' })
   @IsString()
@@ -29,12 +29,12 @@ export class SendMessageDto {
   @ApiProperty({ description: 'Conteúdo da mensagem' })
   @IsString()
   @IsNotEmpty()
-  content: string;
+  content!: string;
 
   @ApiProperty({ enum: ['SMS', 'WHATSAPP'], example: 'WHATSAPP' })
   @IsEnum(['SMS', 'WHATSAPP'])
   @IsNotEmpty()
-  channel: 'SMS' | 'WHATSAPP';
+  channel?: 'SMS' | 'WHATSAPP';
 
   @ApiPropertyOptional({ enum: ['normal', 'urgente'], default: 'normal' })
   @IsEnum(['normal', 'urgente'])

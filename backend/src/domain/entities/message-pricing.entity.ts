@@ -10,18 +10,18 @@ import {
 @Entity('message_pricings')
 export class MessagePricingEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 20, unique: true })
-  priority: string;
+  priority!: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  cost: number;
+  cost!: number;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

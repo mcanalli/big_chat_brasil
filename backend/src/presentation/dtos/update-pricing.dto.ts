@@ -5,10 +5,10 @@ export class UpdatePricingDto {
   @ApiProperty({ example: 'normal' })
   @IsString()
   @IsNotEmpty()
-  priority: string;
+  priority!: string;
 
   @ApiProperty({ example: 0.25 })
   @IsNumber()
   @IsPositive()
-  cost: number;
+  cost!: number;
 }

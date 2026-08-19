@@ -20,13 +20,13 @@ export class MessageEntity {
    * PK da mensagem (UUID).
    */
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   /**
    * FK para a conversa (Thread).
    */
   @Column({ name: 'conversationId' })
-  conversationId: string;
+  conversationId!: string;
 
   /**
    * Entidade da conversa associada.
@@ -35,50 +35,50 @@ export class MessageEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'conversationId' })
-  conversation: ConversationEntity;
+  conversation!: ConversationEntity;
 
   /**
    * FK para o cliente remetente.
    */
   @Column({ name: 'senderId' })
-  senderId: string;
+  senderId!: string;
 
   /**
    * Entidade do cliente remetente.
    */
   @ManyToOne(() => ClientEntity, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'senderId' })
-  sender: ClientEntity;
+  sender!: ClientEntity;
 
   /**
    * Telefone de destino da mensagem.
    */
   @Column({ type: 'varchar', length: 20 })
-  recipientPhone: string;
+  recipientPhone!: string;
 
   /**
    * Canal de envio: SMS ou WHATSAPP.
    */
   @Column({ type: 'enum', enum: ['SMS', 'WHATSAPP'] })
-  channel: 'SMS' | 'WHATSAPP';
+  channel!: 'SMS' | 'WHATSAPP';
 
   /**
    * Conteúdo/Texto da mensagem.
    */
   @Column({ type: 'text' })
-  content: string;
+  content!: string;
 
   /**
    * Data/hora da solicitação de envio.
    */
   @CreateDateColumn({ type: 'timestamp' })
-  timestamp: Date;
+  timestamp!: Date;
 
   /**
    * Prioridade na fila de envio: normal ou urgent.
    */
   @Column({ type: 'enum', enum: ['normal', 'urgente'], default: 'normal' })
-  priority: 'normal' | 'urgente';
+  priority!: 'normal' | 'urgente';
 
   /**
    * Estado atual no ciclo de vida da mensagem.
@@ -88,17 +88,17 @@ export class MessageEntity {
     enum: ['queued', 'processing', 'sent', 'delivered', 'read', 'failed'],
     default: 'queued',
   })
-  status: 'queued' | 'processing' | 'sent' | 'delivered' | 'read' | 'failed';
+  status!: 'queued' | 'processing' | 'sent' | 'delivered' | 'read' | 'failed';
 
   /**
    * Custo cobrado pelo disparo (R$).
    */
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  cost: number;
+  cost!: number;
 
   /**
    * Histórico de transições de status da mensagem.
    */
   @OneToMany(() => MessageStatusHistoryEntity, (history) => history.message)
-  statusHistory: MessageStatusHistoryEntity[];
+  statusHistory!: MessageStatusHistoryEntity[];
 }

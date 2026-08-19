@@ -11,7 +11,11 @@ import { DataSource, Repository } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { QueueService } from '../../infrastructure/queue/queue.service';
 import { SendMessageDto } from '../../presentation/dtos/send-message.dto';
-import { SendBulkMessageDto } from '../../presentation/dtos/send-bulk-message.dto';
+import {
+  BulkSendResponseDto,
+  SendBulkMessageDto,
+  MessageChannel,
+} from '../../presentation/dtos/send-bulk-message.dto';
 
 describe('MessageService', () => {
   let service: MessageService;
@@ -127,9 +131,9 @@ describe('MessageService', () => {
   it('deve criar mensagem com sucesso se houver saldo', async () => {
     const dto: SendBulkMessageDto = {
       senderId: 'client-1',
-      channel: 'WHATSAPP',
+      channel: MessageChannel.WHATSAPP,
       content: 'Oi',
-      recipientPhone: '5511999999999',
+      recipientPhones: ['5511999999999'],
     };
 
     mockQueryRunner.manager.findOne.mockResolvedValue({
@@ -149,7 +153,7 @@ describe('MessageService', () => {
       Promise.resolve(entity),
     );
 
-    const result = await service.sendMessage(dto);
+    const result = await service.sendBulkMessage(dto);
 
     expect(result).toBeDefined();
     expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
@@ -159,7 +163,7 @@ describe('MessageService', () => {
     it('deve lançar 402 se saldo insuficiente no pré-pago para lote', async () => {
       const dto: SendBulkMessageDto = {
         senderId: 'client-1',
-        channel: 'SMS',
+        channel: MessageChannel.SMS,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
       };
@@ -181,7 +185,7 @@ describe('MessageService', () => {
     it('deve lançar 402 se limite excedido no pós-pago para lote', async () => {
       const dto: SendBulkMessageDto = {
         senderId: 'client-2',
-        channel: 'WHATSAPP',
+        channel: MessageChannel.WHATSAPP,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
       };
@@ -204,7 +208,7 @@ describe('MessageService', () => {
     it('deve processar lote com sucesso e debitar saldo total', async () => {
       const dto: SendBulkMessageDto = {
         senderId: 'client-1',
-        channel: 'SMS',
+        channel: MessageChannel.SMS,
         content: 'Bulk SMS',
         recipientPhones: ['phone1', 'phone2'],
         recipientNames: ['Name 1', 'Name 2'],
@@ -236,7 +240,7 @@ describe('MessageService', () => {
     it('deve fazer rollback se falhar a criação de uma mensagem no lote', async () => {
       const dto: SendBulkMessageDto = {
         senderId: 'client-1',
-        channel: 'SMS',
+        channel: MessageChannel.SMS,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
       };
