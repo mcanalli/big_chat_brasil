@@ -225,6 +225,7 @@ export class MessageService {
           conversationId: conversation.id,
           cost: unitCost,
           status: 'queued',
+          priority: dto.priority || 'normal',
         });
         const savedMessage = await queryRunner.manager.save(message);
         savedMessages.push(savedMessage);

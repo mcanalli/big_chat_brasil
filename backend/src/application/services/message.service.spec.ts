@@ -257,4 +257,42 @@ describe('MessageService', () => {
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
   });
+
+    it('deve processar lote com prioridade urgente e cobrar custo correto', async () => {
+      const dto: SendBulkMessageDto = {
+        senderId: 'client-1',
+        channel: MessageChannel.WHATSAPP,
+        content: 'Urgent Bulk',
+        recipientPhones: ['phone1', 'phone2'],
+        priority: 'urgente' as any,
+      };
+
+      const client = {
+        id: 'client-1',
+        planType: 'prepaid',
+        balance: 10.0,
+      };
+
+      mockQueryRunner.manager.findOne.mockResolvedValue(client);
+      pricingService.getCost.mockResolvedValue(0.5); // Custo urgente
+      (conversationService.findOrCreate as jest.Mock).mockResolvedValue({
+        id: 'conv-x',
+      });
+      mockQueryRunner.manager.save.mockImplementation((entity: any) =>
+        Promise.resolve(entity),
+      );
+
+      const result = await service.sendBulkMessage(dto);
+
+      expect(result.totalCost).toBe(1.0); // 2 * 0.5
+      expect(client.balance).toBe(9.0);
+      expect(mockQueryRunner.manager.create).toHaveBeenCalledWith(
+        MessageEntity,
+        expect.objectContaining({
+          priority: 'urgente',
+          cost: 0.5,
+        }),
+      );
+    });
+
 });

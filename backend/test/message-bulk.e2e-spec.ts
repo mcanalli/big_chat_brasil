@@ -113,4 +113,39 @@ describe('Message Bulk Send (e2e)', () => {
       .send(payload)
       .expect(402);
   });
+
+  it('POST /messages/bulk - Deve respeitar a prioridade urgente e cobrar o valor correto', async () => {
+    // Reset balance
+    await dataSource
+      .getRepository(ClientEntity)
+      .update(client.id, { balance: 10.0 });
+
+    const payload = {
+      senderId: client.id,
+      recipientPhones: ['5511911111111', '5511922222222'],
+      content: 'Hello Urgent Bulk!',
+      channel: 'WHATSAPP',
+      priority: 'urgente',
+    };
+
+    const response = await request(
+      app.getHttpServer() as string | object | undefined,
+    )
+      .post('/messages/bulk')
+      .send(payload)
+      .expect(201);
+
+    const body = response.body;
+    // O custo de WHATSAPP urgente deve ser 0.50 (baseado no PricingService se ele seguir o padrão)
+    // Se o custo normal é 0.25 e o urgente é 0.50, para 2 mensagens o total é 1.00
+    expect(body.totalCost).toBe(1.0);
+
+    const messageRepo = dataSource.getRepository(MessageEntity);
+    const messages = await messageRepo.find({
+      where: { senderId: client.id, priority: 'urgente' as any },
+    });
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+    expect(messages[0].priority).toBe('urgente');
+  });
 });
+

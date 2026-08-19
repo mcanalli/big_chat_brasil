@@ -56,7 +56,7 @@ export class SendBulkMessageDto {
   })
   @IsOptional()
   @IsEnum(MessagePriority)
-  priority?: MessagePriority = MessagePriority.NORMAL;
+  priority: MessagePriority = MessagePriority.NORMAL;
 }
 
 export class BulkSendResponseDto {
