@@ -92,24 +92,30 @@ export class InitialSeeder {
         await queryRunner.manager.save(history);
 
         // 6. Registro Financeiro (Débito da mensagem e Carga Inicial)
-        const transactionLoad = queryRunner.manager.create(FinancialTransactionEntity, {
-          clientId: client1.id,
-          type: 'CREDIT_PURCHASE',
-          amount: 10.5,
-          previousBalance: 0,
-          newBalance: 10.5,
-          description: 'Carga inicial de créditos',
-        });
+        const transactionLoad = queryRunner.manager.create(
+          FinancialTransactionEntity,
+          {
+            clientId: client1.id,
+            type: 'CREDIT_PURCHASE',
+            amount: 10.5,
+            previousBalance: 0,
+            newBalance: 10.5,
+            description: 'Carga inicial de créditos',
+          },
+        );
         await queryRunner.manager.save(transactionLoad);
 
-        const transactionDebit = queryRunner.manager.create(FinancialTransactionEntity, {
-          clientId: client1.id,
-          type: 'MESSAGE_DEBIT',
-          amount: 0.5,
-          previousBalance: 10.5,
-          newBalance: 10.0,
-          description: `Débito de envio WhatsApp: ${message.id}`,
-        });
+        const transactionDebit = queryRunner.manager.create(
+          FinancialTransactionEntity,
+          {
+            clientId: client1.id,
+            type: 'MESSAGE_DEBIT',
+            amount: 0.5,
+            previousBalance: 10.5,
+            newBalance: 10.0,
+            description: `Débito de envio WhatsApp: ${message.id}`,
+          },
+        );
         await queryRunner.manager.save(transactionDebit);
       }
 

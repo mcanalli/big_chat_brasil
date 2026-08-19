@@ -3,25 +3,29 @@ import { AdminService } from './admin.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ClientEntity } from '../../domain/entities/client.entity';
 import { FinancialTransactionEntity } from '../../domain/entities/financial-transaction.entity';
-import { DataSource } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
+import {
+  AddCreditsDto,
+  AdjustLimitDto,
+} from '../../presentation/dtos/admin.dto';
 
 describe('AdminService', () => {
   let service: AdminService;
-  let clientRepo: any;
+  let clientRepo: jest.Mocked<Repository<ClientEntity>>;
 
   const mockClientPrepaid = {
     id: 'uuid-pre',
     planType: 'prepaid',
     balance: 50,
-  };
+  } as ClientEntity;
 
   const mockClientPostpaid = {
     id: 'uuid-post',
     planType: 'postpaid',
     limit: 500,
     consumed: 0,
-  };
+  } as ClientEntity;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -65,22 +69,33 @@ describe('AdminService', () => {
 
   describe('addCredits', () => {
     it('should add credits to prepaid client', async () => {
-      clientRepo.findOne.mockResolvedValue({ ...mockClientPrepaid });
-      const result = await service.addCredits('uuid-pre', { amount: 50 });
+      clientRepo.findOne.mockResolvedValue({
+        ...mockClientPrepaid,
+      });
+      const dto: AddCreditsDto = { amount: 50 };
+      const result = await service.addCredits('uuid-pre', dto);
       expect(result.success).toBe(true);
       expect(result.newBalance).toBe(100);
     });
 
     it('should throw BadRequestException if client is postpaid', async () => {
-      clientRepo.findOne.mockResolvedValue({ ...mockClientPostpaid });
-      await expect(service.addCredits('uuid-post', { amount: 50 })).rejects.toThrow(BadRequestException);
+      clientRepo.findOne.mockResolvedValue({
+        ...mockClientPostpaid,
+      });
+      const dto: AddCreditsDto = { amount: 50 };
+      await expect(service.addCredits('uuid-post', dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('adjustLimit', () => {
     it('should adjust limit of postpaid client', async () => {
-      clientRepo.findOne.mockResolvedValue({ ...mockClientPostpaid });
-      const result = await service.adjustLimit('uuid-post', { newLimit: 1000 });
+      clientRepo.findOne.mockResolvedValue({
+        ...mockClientPostpaid,
+      });
+      const dto: AdjustLimitDto = { newLimit: 1000 };
+      const result = await service.adjustLimit('uuid-post', dto);
       expect(result.newLimit).toBe(1000);
     });
   });

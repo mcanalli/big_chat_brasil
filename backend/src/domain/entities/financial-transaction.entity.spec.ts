@@ -23,7 +23,7 @@ describe('FinancialTransactionEntity', () => {
   it('should have associations defined', () => {
     const transaction = new FinancialTransactionEntity();
     const client = new ClientEntity();
-    
+
     transaction.client = client;
 
     expect(transaction.client).toBeInstanceOf(ClientEntity);

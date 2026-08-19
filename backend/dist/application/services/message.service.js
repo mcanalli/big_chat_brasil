@@ -21,6 +21,7 @@ const client_entity_1 = require("../../domain/entities/client.entity");
 const conversation_service_1 = require("./conversation.service");
 const queue_service_1 = require("../../infrastructure/queue/queue.service");
 const message_status_history_entity_1 = require("../../domain/entities/message-status-history.entity");
+const uuid_1 = require("uuid");
 let MessageService = class MessageService {
     messageRepo;
     clientRepo;
@@ -53,8 +54,13 @@ let MessageService = class MessageService {
                 console.log('[STEP 4.1] Erro: Cliente não encontrado');
                 throw new common_1.NotFoundException('Client not found');
             }
-            const cost = dto.channel === 'WHATSAPP' ? 0.05 : 0.1;
-            console.log('[STEP 5] Validando saldo/limite do cliente', { planType: client.planType, balance: client.balance, cost });
+            const unitCost = 1;
+            const cost = unitCost;
+            console.log('[STEP 5] Validando saldo/limite do cliente', {
+                planType: client.planType,
+                balance: client.balance,
+                cost,
+            });
             if (client.planType === 'prepaid') {
                 if (Number(client.balance) < cost) {
                     console.log('[STEP 5.1] Erro: Saldo insuficiente');
@@ -73,7 +79,11 @@ let MessageService = class MessageService {
             const conversation = await this.conversationService.findOrCreate(client.id, dto.recipientPhone, dto.recipientName, queryRunner.manager);
             console.log('[STEP 7] Persistindo entidade da Mensagem');
             const message = queryRunner.manager.create(message_entity_1.MessageEntity, {
-                ...dto,
+                senderId: dto.senderId,
+                recipientPhone: dto.recipientPhone,
+                content: dto.content,
+                channel: dto.channel,
+                priority: dto.priority,
                 conversationId: conversation.id,
                 cost,
                 status: 'queued',
@@ -95,14 +105,12 @@ let MessageService = class MessageService {
             await queryRunner.commitTransaction();
             console.log('[STEP 10] Commit executado com sucesso');
             console.log('[STEP 11] Disparando evento assíncrono para o RabbitMQ');
-            this.queueService.publishMessage(savedMessage).catch((err) => {
-                console.error('[MQ ERROR] Falha ao publicar mensagem no RabbitMQ:', err);
-            });
+            this.queueService.publishMessage(savedMessage);
             console.log('[STEP 12] Retornando resposta ao Controller');
             return savedMessage;
         }
         catch (err) {
-            console.error('[STEP ERROR] Ocorreu um erro na transação:', err.message);
+            console.error('[STEP ERROR] Ocorreu um erro na transação:', err instanceof Error ? err.message : String(err));
             if (queryRunner.isTransactionActive) {
                 console.log('[STEP ROLLBACK] Efetuando rollback da transação');
                 await queryRunner.rollbackTransaction();
@@ -114,8 +122,95 @@ let MessageService = class MessageService {
             await queryRunner.release();
         }
     }
+    async sendBulkMessage(dto) {
+        console.log('[BULK] Início do processamento de sendBulkMessage', {
+            senderId: dto.senderId,
+            recipientCount: dto.recipientPhones.length,
+        });
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const client = await queryRunner.manager.findOne(client_entity_1.ClientEntity, {
+                where: { id: dto.senderId },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!client) {
+                throw new common_1.NotFoundException('Client not found');
+            }
+            const unitCost = 1;
+            const totalCost = unitCost * dto.recipientPhones.length;
+            console.log('[BULK] Validando saldo/limite total', {
+                planType: client.planType,
+                totalCost,
+            });
+            if (client.planType === 'prepaid') {
+                if (Number(client.balance) < totalCost) {
+                    throw new common_1.HttpException('Insufficient balance for bulk operation', common_1.HttpStatus.PAYMENT_REQUIRED);
+                }
+                client.balance = Number(client.balance) - totalCost;
+            }
+            else {
+                if (Number(client.consumed) + totalCost > Number(client.limit)) {
+                    throw new common_1.HttpException('Monthly limit exceeded for bulk operation', common_1.HttpStatus.PAYMENT_REQUIRED);
+                }
+                client.consumed = Number(client.consumed) + totalCost;
+            }
+            const savedMessages = [];
+            const bulkId = (0, uuid_1.v4)();
+            for (let i = 0; i < dto.recipientPhones.length; i++) {
+                const phone = dto.recipientPhones[i];
+                const name = dto.recipientNames ? dto.recipientNames[i] : undefined;
+                const conversation = await this.conversationService.findOrCreate(client.id, phone, name, queryRunner.manager);
+                const message = queryRunner.manager.create(message_entity_1.MessageEntity, {
+                    senderId: dto.senderId,
+                    content: dto.content,
+                    channel: dto.channel,
+                    recipientPhone: phone,
+                    conversationId: conversation.id,
+                    cost: unitCost,
+                    status: 'queued',
+                });
+                const savedMessage = await queryRunner.manager.save(message);
+                savedMessages.push(savedMessage);
+                const history = queryRunner.manager.create(message_status_history_entity_1.MessageStatusHistoryEntity, {
+                    messageId: savedMessage.id,
+                    status: 'queued',
+                    details: 'Bulk message queued',
+                });
+                await queryRunner.manager.save(history);
+                conversation.lastMessageContent = dto.content;
+                conversation.lastMessageTime = new Date();
+                await queryRunner.manager.save(conversation);
+            }
+            await queryRunner.manager.save(client);
+            await queryRunner.commitTransaction();
+            savedMessages.forEach((msg) => {
+                this.queueService.publishMessage(msg);
+            });
+            return {
+                bulkId,
+                totalRecipients: dto.recipientPhones.length,
+                totalCost,
+                status: 'accepted',
+                queuedMessages: savedMessages.map((m) => ({
+                    messageId: m.id,
+                    recipientPhone: m.recipientPhone,
+                })),
+            };
+        }
+        catch (err) {
+            if (queryRunner.isTransactionActive) {
+                await queryRunner.rollbackTransaction();
+            }
+            throw err;
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
     async getReport(filter) {
-        const { startDate, endDate, status, senderId, page = 1, limit = 10 } = filter;
+        const { startDate, endDate, status, senderId, page = 1, limit = 10, } = filter;
         const where = {};
         if (startDate && endDate) {
             where.timestamp = (0, typeorm_2.Between)(new Date(startDate), new Date(endDate));

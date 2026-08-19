@@ -12,7 +12,7 @@ describe('MessageEntity', () => {
     message.content = 'Test message';
     message.priority = 'normal';
     message.status = 'queued';
-    message.cost = 0.10;
+    message.cost = 0.1;
 
     expect(message).toBeDefined();
     expect(message.conversationId).toBe('conv-uuid');
@@ -22,14 +22,14 @@ describe('MessageEntity', () => {
     expect(message.content).toBe('Test message');
     expect(message.priority).toBe('normal');
     expect(message.status).toBe('queued');
-    expect(message.cost).toBe(0.10);
+    expect(message.cost).toBe(0.1);
   });
 
   it('should have associations defined', () => {
     const message = new MessageEntity();
     const conversation = new ConversationEntity();
     const sender = new ClientEntity();
-    
+
     message.conversation = conversation;
     message.sender = sender;
     message.statusHistory = [];

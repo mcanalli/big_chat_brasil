@@ -1,14 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { QueueService } from './queue.service';
 
+import { ClientProxy } from '@nestjs/microservices';
+import { of } from 'rxjs';
+
 describe('QueueService', () => {
   let service: QueueService;
-  let clientProxy: any;
+  let clientProxy: jest.Mocked<ClientProxy>;
 
   beforeEach(async () => {
     clientProxy = {
-      emit: jest.fn(),
-    };
+      emit: jest.fn().mockReturnValue(of({})),
+    } as unknown as jest.Mocked<ClientProxy>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -20,15 +23,23 @@ describe('QueueService', () => {
     service = module.get<QueueService>(QueueService);
   });
 
-  it('should publish to urgent queue when priority is urgent', async () => {
+  it('should publish to urgent queue when priority is urgent', () => {
     const message = { id: '1', priority: 'urgent' };
-    await service.publishMessage(message);
-    expect(clientProxy.emit).toHaveBeenCalledWith('bcb.messages.urgent', message);
+    service.publishMessage(message);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(clientProxy.emit).toHaveBeenCalledWith(
+      'bcb.messages.urgent',
+      message,
+    );
   });
 
-  it('should publish to normal queue when priority is normal', async () => {
+  it('should publish to normal queue when priority is normal', () => {
     const message = { id: '2', priority: 'normal' };
-    await service.publishMessage(message);
-    expect(clientProxy.emit).toHaveBeenCalledWith('bcb.messages.normal', message);
+    service.publishMessage(message);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(clientProxy.emit).toHaveBeenCalledWith(
+      'bcb.messages.normal',
+      message,
+    );
   });
 });

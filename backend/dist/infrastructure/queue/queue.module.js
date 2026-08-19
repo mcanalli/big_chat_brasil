@@ -27,7 +27,10 @@ exports.QueueModule = QueueModule = __decorate([
                     name: 'RABBITMQ_SERVICE',
                     transport: microservices_1.Transport.RMQ,
                     options: {
-                        urls: [process.env.RABBITMQ_URI || 'amqp://bcb_mq_user:bcb_mq_password@localhost:5672'],
+                        urls: [
+                            process.env.RABBITMQ_URI ||
+                                'amqp://bcb_mq_user:bcb_mq_password@localhost:5672',
+                        ],
                         queue: 'bcb.messages.normal',
                         queueOptions: {
                             durable: true,

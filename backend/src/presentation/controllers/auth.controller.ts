@@ -13,7 +13,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Realizar login administrativo' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
-  async login(@Body() authDto: AuthDto) {
+  login(@Body() authDto: AuthDto) {
     return this.authService.login(authDto);
   }
 }

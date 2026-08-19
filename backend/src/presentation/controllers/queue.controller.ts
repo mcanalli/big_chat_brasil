@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+﻿import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +15,11 @@ export class QueueController {
   @Get('status')
   @ApiOperation({ summary: 'Get current queue status and statistics' })
   async getStatus() {
+    interface RawStat {
+      status: string;
+      priority: string;
+      count: string;
+    }
     const stats = await this.messageRepo
       .createQueryBuilder('message')
       .select('message.status', 'status')
@@ -26,7 +31,7 @@ export class QueueController {
 
     return {
       timestamp: new Date(),
-      statistics: stats.map(s => ({
+      statistics: stats.map((s: RawStat) => ({
         status: s.status,
         priority: s.priority,
         count: parseInt(s.count, 10),

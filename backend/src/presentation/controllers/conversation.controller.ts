@@ -10,7 +10,12 @@ export class ConversationController {
   @Post()
   @ApiOperation({ summary: 'Criar ou recuperar uma conversa' })
   async findOrCreate(
-    @Body() body: { clientId: string; recipientPhone: string; recipientName?: string },
+    @Body()
+    body: {
+      clientId: string;
+      recipientPhone: string;
+      recipientName?: string;
+    },
   ) {
     return this.conversationService.findOrCreate(
       body.clientId,

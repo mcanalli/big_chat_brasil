@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ClientEntity } from '../../domain/entities/client.entity';
 import { FinancialTransactionEntity } from '../../domain/entities/financial-transaction.entity';
-import { AddCreditsDto, AdjustLimitDto, ConvertPlanDto } from '../../presentation/dtos/admin.dto';
+import {
+  AddCreditsDto,
+  AdjustLimitDto,
+  ConvertPlanDto,
+} from '../../presentation/dtos/admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -16,10 +24,14 @@ export class AdminService {
   ) {}
 
   async addCredits(clientId: string, addCreditsDto: AddCreditsDto) {
-    const client = await this.clientRepository.findOne({ where: { id: clientId } });
+    const client = await this.clientRepository.findOne({
+      where: { id: clientId },
+    });
     if (!client) throw new NotFoundException('Cliente não encontrado');
     if (client.planType !== 'prepaid') {
-      throw new BadRequestException('Apenas clientes pré-pagos podem receber créditos');
+      throw new BadRequestException(
+        'Apenas clientes pré-pagos podem receber créditos',
+      );
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -37,7 +49,8 @@ export class AdminService {
         amount,
         previousBalance,
         newBalance: client.balance,
-        description: addCreditsDto.description || 'Adição de créditos via admin',
+        description:
+          addCreditsDto.description || 'Adição de créditos via admin',
       });
 
       await queryRunner.manager.save(client);
@@ -54,22 +67,28 @@ export class AdminService {
   }
 
   async adjustLimit(clientId: string, adjustLimitDto: AdjustLimitDto) {
-    const client = await this.clientRepository.findOne({ where: { id: clientId } });
+    const client = await this.clientRepository.findOne({
+      where: { id: clientId },
+    });
     if (!client) throw new NotFoundException('Cliente não encontrado');
     if (client.planType !== 'postpaid') {
-      throw new BadRequestException('Apenas clientes pós-pagos possuem limite de crédito');
+      throw new BadRequestException(
+        'Apenas clientes pós-pagos possuem limite de crédito',
+      );
     }
 
     const previousLimit = client.limit;
     client.limit = adjustLimitDto.newLimit;
-    
+
     await this.clientRepository.save(client);
 
     return { success: true, previousLimit, newLimit: client.limit };
   }
 
   async convertPlan(clientId: string, convertPlanDto: ConvertPlanDto) {
-    const client = await this.clientRepository.findOne({ where: { id: clientId } });
+    const client = await this.clientRepository.findOne({
+      where: { id: clientId },
+    });
     if (!client) throw new NotFoundException('Cliente não encontrado');
 
     if (client.planType === convertPlanDto.newPlanType) {

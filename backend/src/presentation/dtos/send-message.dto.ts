@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class SendMessageDto {
   @ApiProperty({ description: 'ID do cliente remetente' })
@@ -7,7 +13,10 @@ export class SendMessageDto {
   @IsNotEmpty()
   senderId: string;
 
-  @ApiProperty({ description: 'Número do destinatário (com DDD)', example: '5511999999999' })
+  @ApiProperty({
+    description: 'Número do destinatário (com DDD)',
+    example: '5511999999999',
+  })
   @IsString()
   @IsNotEmpty()
   recipientPhone: string;

@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource, QueryRunner } from 'typeorm';
 import { InitialSeeder } from './initial.seeder';
 
 describe('InitialSeeder', () => {
   let seeder: InitialSeeder;
-  let dataSource: DataSource;
+
   let queryRunner: Partial<QueryRunner>;
 
   beforeEach(async () => {
@@ -16,9 +16,13 @@ describe('InitialSeeder', () => {
       release: jest.fn().mockResolvedValue(null),
       manager: {
         findOne: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation((entity, data) => ({ id: 'generated-uuid', ...data })),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        create: jest.fn().mockImplementation((entity: any, data: any) => ({
+          id: 'generated-uuid',
+          ...data,
+        })),
         save: jest.fn().mockResolvedValue(null),
-      } as any,
+      } as unknown as QueryRunner['manager'],
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +38,6 @@ describe('InitialSeeder', () => {
     }).compile();
 
     seeder = module.get<InitialSeeder>(InitialSeeder);
-    dataSource = module.get<DataSource>(DataSource);
   });
 
   it('should be defined', () => {
@@ -45,19 +48,27 @@ describe('InitialSeeder', () => {
     await seeder.seed();
 
     expect(queryRunner.connect).toHaveBeenCalled();
+
     expect(queryRunner.startTransaction).toHaveBeenCalled();
-    expect(queryRunner.manager?.create).toHaveBeenCalled();
-    expect(queryRunner.manager?.save).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(queryRunner.manager!.create).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(queryRunner.manager!.save).toHaveBeenCalled();
+
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
+
     expect(queryRunner.release).toHaveBeenCalled();
   });
 
   it('should rollback transaction on error', async () => {
-    (queryRunner.manager?.save as jest.Mock).mockRejectedValueOnce(new Error('Save failed'));
+    (queryRunner.manager?.save as jest.Mock).mockRejectedValueOnce(
+      new Error('Save failed'),
+    );
 
-    await expect(seeder.seed()).rejects.toThrow('Save failed');
+    await expect(() => seeder.seed()).rejects.toThrow('Save failed');
 
     expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+
     expect(queryRunner.release).toHaveBeenCalled();
   });
 });

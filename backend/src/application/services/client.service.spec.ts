@@ -3,10 +3,11 @@ import { ClientService } from './client.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ClientEntity } from '../../domain/entities/client.entity';
 import { NotFoundException } from '@nestjs/common';
+import { Repository } from 'typeorm';
 
 describe('ClientService', () => {
   let service: ClientService;
-  let repo: any;
+  let repo: jest.Mocked<Repository<ClientEntity>>;
 
   const mockClient = {
     id: 'uuid-1',
@@ -36,7 +37,9 @@ describe('ClientService', () => {
     }).compile();
 
     service = module.get<ClientService>(ClientService);
-    repo = module.get(getRepositoryToken(ClientEntity));
+    repo = module.get<jest.Mocked<Repository<ClientEntity>>>(
+      getRepositoryToken(ClientEntity),
+    );
   });
 
   it('should find all clients', async () => {
@@ -51,7 +54,9 @@ describe('ClientService', () => {
 
   it('should throw NotFoundException if client not found', async () => {
     repo.findOne.mockResolvedValue(null);
-    await expect(service.findOne('wrong-id')).rejects.toThrow(NotFoundException);
+    await expect(service.findOne('wrong-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('should return balance information', async () => {

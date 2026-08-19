@@ -17,8 +17,8 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should return a token on successful login', async () => {
-    const result = await service.login({
+  it('should return a token on successful login', () => {
+    const result = service.login({
       email: 'admin@bigchatbrasil.com.br',
       password: 'admin123',
     });
@@ -26,12 +26,12 @@ describe('AuthService', () => {
     expect(result.user.email).toBe('admin@bigchatbrasil.com.br');
   });
 
-  it('should throw UnauthorizedException on invalid credentials', async () => {
-    await expect(
+  it('should throw UnauthorizedException on invalid credentials', () => {
+    expect(() =>
       service.login({
         email: 'wrong@email.com',
         password: 'wrongpassword',
       }),
-    ).rejects.toThrow(UnauthorizedException);
+    ).toThrow(UnauthorizedException);
   });
 });

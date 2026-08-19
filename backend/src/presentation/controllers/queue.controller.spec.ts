@@ -2,10 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QueueController } from './queue.controller';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MessageEntity } from '../../domain/entities/message.entity';
+import { Repository } from 'typeorm';
 
 describe('QueueController', () => {
   let controller: QueueController;
-  let repo: any;
+  let repo: jest.Mocked<Repository<MessageEntity>>;
 
   beforeEach(async () => {
     repo = {
@@ -19,7 +20,7 @@ describe('QueueController', () => {
           { status: 'sent', priority: 'normal', count: '10' },
         ]),
       }),
-    };
+    } as unknown as jest.Mocked<Repository<MessageEntity>>;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [QueueController],
@@ -29,6 +30,7 @@ describe('QueueController', () => {
     }).compile();
 
     controller = module.get<QueueController>(QueueController);
+    repo = module.get(getRepositoryToken(MessageEntity));
   });
 
   it('should be defined', () => {

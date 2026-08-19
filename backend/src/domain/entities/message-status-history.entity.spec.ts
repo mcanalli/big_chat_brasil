@@ -17,7 +17,7 @@ describe('MessageStatusHistoryEntity', () => {
   it('should have associations defined', () => {
     const history = new MessageStatusHistoryEntity();
     const message = new MessageEntity();
-    
+
     history.message = message;
 
     expect(history.message).toBeInstanceOf(MessageEntity);

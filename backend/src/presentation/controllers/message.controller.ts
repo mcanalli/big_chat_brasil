@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MessageService } from '../../application/services/message.service';
 import { SendMessageDto } from '../dtos/send-message.dto';
 import { ReportFilterDto } from '../dtos/report-filter.dto';
+import { SendBulkMessageDto } from '../dtos/send-bulk-message.dto';
 
 @ApiTags('Messages')
 @Controller('messages')
@@ -13,6 +14,12 @@ export class MessageController {
   @ApiOperation({ summary: 'Enviar uma nova mensagem' })
   async send(@Body() dto: SendMessageDto) {
     return this.messageService.sendMessage(dto);
+  }
+
+  @Post('bulk')
+  @ApiOperation({ summary: 'Enviar mensagens em massa' })
+  async sendBulk(@Body() dto: SendBulkMessageDto) {
+    return this.messageService.sendBulkMessage(dto);
   }
 
   @Get('report')

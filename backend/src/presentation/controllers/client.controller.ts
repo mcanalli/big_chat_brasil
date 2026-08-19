@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ClientService } from '../../application/services/client.service';
 import { CreateClientDto } from '../dtos/create-client.dto';
 import { UpdateClientDto } from '../dtos/update-client.dto';
@@ -29,7 +29,10 @@ export class ClientController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar dados de um cliente' })
-  async update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateClientDto: UpdateClientDto,
+  ) {
     return this.clientService.update(id, updateClientDto);
   }
 

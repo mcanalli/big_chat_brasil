@@ -31,12 +31,12 @@ let MessageConsumer = MessageConsumer_1 = class MessageConsumer {
         this.statusHistoryRepo = statusHistoryRepo;
         this.dataSource = dataSource;
     }
-    async handleUrgentMessage(data, context) {
+    async handleUrgentMessage(data) {
         this.logger.log(`Received URGENT message: ${data.id}`);
         await this.processMessage(data);
         this.urgentCounter++;
     }
-    async handleNormalMessage(data, context) {
+    async handleNormalMessage(data) {
         this.logger.log(`Received NORMAL message: ${data.id}`);
         await this.processMessage(data);
         this.urgentCounter = 0;
@@ -66,7 +66,8 @@ let MessageConsumer = MessageConsumer_1 = class MessageConsumer {
         }
         catch (err) {
             await queryRunner.rollbackTransaction();
-            this.logger.error(`Failed to update status for ${messageId}`, err.stack);
+            const stack = err instanceof Error ? err.stack : undefined;
+            this.logger.error(`Failed to update status for ${messageId}`, stack);
         }
         finally {
             await queryRunner.release();
@@ -77,17 +78,15 @@ exports.MessageConsumer = MessageConsumer;
 __decorate([
     (0, microservices_1.EventPattern)('bcb.messages.urgent'),
     __param(0, (0, microservices_1.Payload)()),
-    __param(1, (0, microservices_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, microservices_1.RmqContext]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MessageConsumer.prototype, "handleUrgentMessage", null);
 __decorate([
     (0, microservices_1.EventPattern)('bcb.messages.normal'),
     __param(0, (0, microservices_1.Payload)()),
-    __param(1, (0, microservices_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, microservices_1.RmqContext]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MessageConsumer.prototype, "handleNormalMessage", null);
 exports.MessageConsumer = MessageConsumer = MessageConsumer_1 = __decorate([

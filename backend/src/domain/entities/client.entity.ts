@@ -76,7 +76,10 @@ export class ClientEntity {
   /**
    * Lista de transações financeiras associadas a este cliente.
    */
-  @OneToMany(() => FinancialTransactionEntity, (transaction) => transaction.client)
+  @OneToMany(
+    () => FinancialTransactionEntity,
+    (transaction) => transaction.client,
+  )
   transactions: FinancialTransactionEntity[];
 
   @CreateDateColumn()

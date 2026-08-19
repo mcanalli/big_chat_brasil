@@ -1,21 +1,27 @@
-import { 
-  IsNotEmpty, 
-  IsNumber, 
-  IsString, 
-  Min, 
-  IsOptional, 
-  IsEnum 
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  Min,
+  IsOptional,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AddCreditsDto {
-  @ApiProperty({ example: 100.0, description: 'Valor dos créditos a adicionar' })
+  @ApiProperty({
+    example: 100.0,
+    description: 'Valor dos créditos a adicionar',
+  })
   @IsNumber()
   @IsNotEmpty()
   @Min(0.01)
   amount!: number;
 
-  @ApiPropertyOptional({ example: 'Compra via PIX', description: 'Descrição da transação' })
+  @ApiPropertyOptional({
+    example: 'Compra via PIX',
+    description: 'Descrição da transação',
+  })
   @IsString()
   @IsOptional()
   description?: string;
@@ -35,7 +41,10 @@ export class ConvertPlanDto {
   @IsNotEmpty()
   newPlanType!: 'prepaid' | 'postpaid';
 
-  @ApiPropertyOptional({ example: 500.0, description: 'Limite inicial se for pós-pago' })
+  @ApiPropertyOptional({
+    example: 500.0,
+    description: 'Limite inicial se for pós-pago',
+  })
   @IsNumber()
   @IsOptional()
   @Min(0)

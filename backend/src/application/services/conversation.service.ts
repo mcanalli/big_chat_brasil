@@ -16,7 +16,7 @@ export class ConversationService {
   async findOrCreate(
     clientId: string,
     recipientPhone: string,
-    recipientName?: string,        // 3º Parâmetro: Nome do destinatário (string)
+    recipientName?: string, // 3º Parâmetro: Nome do destinatário (string)
     entityManager?: EntityManager, // 4º Parâmetro: Manager da transação (opcional)
   ): Promise<ConversationEntity> {
     const manager = entityManager || this.conversationRepo.manager;
@@ -26,7 +26,9 @@ export class ConversationService {
     });
 
     if (!conversation) {
-      const client = await manager.findOne(ClientEntity, { where: { id: clientId } });
+      const client = await manager.findOne(ClientEntity, {
+        where: { id: clientId },
+      });
       if (!client) throw new NotFoundException('Client not found');
 
       conversation = manager.create(ConversationEntity, {

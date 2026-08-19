@@ -10,7 +10,6 @@ import { MessageController } from './presentation/controllers/message.controller
 import { ConversationController } from './presentation/controllers/conversation.controller';
 import { QueueModule } from './infrastructure/queue/queue.module';
 
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([

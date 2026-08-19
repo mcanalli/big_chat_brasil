@@ -20,8 +20,10 @@ let QueueService = class QueueService {
     constructor(client) {
         this.client = client;
     }
-    async publishMessage(message) {
-        const pattern = message.priority === 'urgent' ? 'bcb.messages.urgent' : 'bcb.messages.normal';
+    publishMessage(message) {
+        const pattern = message.priority === 'urgent'
+            ? 'bcb.messages.urgent'
+            : 'bcb.messages.normal';
         return this.client.emit(pattern, message);
     }
 };

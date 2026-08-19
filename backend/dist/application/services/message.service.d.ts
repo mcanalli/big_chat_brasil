@@ -6,6 +6,7 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
 import { SendMessageDto } from '../../presentation/dtos/send-message.dto';
 import { ReportFilterDto } from '../../presentation/dtos/report-filter.dto';
 import { MessageStatusHistoryEntity } from '../../domain/entities/message-status-history.entity';
+import { BulkSendResponseDto, SendBulkMessageDto } from '../../presentation/dtos/send-bulk-message.dto';
 export declare class MessageService {
     private readonly messageRepo;
     private readonly clientRepo;
@@ -15,6 +16,7 @@ export declare class MessageService {
     private readonly dataSource;
     constructor(messageRepo: Repository<MessageEntity>, clientRepo: Repository<ClientEntity>, statusHistoryRepo: Repository<MessageStatusHistoryEntity>, conversationService: ConversationService, queueService: QueueService, dataSource: DataSource);
     sendMessage(dto: SendMessageDto): Promise<MessageEntity>;
+    sendBulkMessage(dto: SendBulkMessageDto): Promise<BulkSendResponseDto>;
     getReport(filter: ReportFilterDto): Promise<{
         items: MessageEntity[];
         total: number;

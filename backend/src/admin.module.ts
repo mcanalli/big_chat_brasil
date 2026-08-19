@@ -6,7 +6,9 @@ import { ClientEntity } from './domain/entities/client.entity';
 import { FinancialTransactionEntity } from './domain/entities/financial-transaction.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ClientEntity, FinancialTransactionEntity])],
+  imports: [
+    TypeOrmModule.forFeature([ClientEntity, FinancialTransactionEntity]),
+  ],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

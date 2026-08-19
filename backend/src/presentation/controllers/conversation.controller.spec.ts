@@ -4,18 +4,19 @@ import { ConversationService } from '../../application/services/conversation.ser
 
 describe('ConversationController', () => {
   let controller: ConversationController;
-  let service: any;
+  let service: jest.Mocked<ConversationService>;
 
   beforeEach(async () => {
     service = {
       findAll: jest.fn(),
-    };
+      findByClient: jest.fn(),
+      findById: jest.fn(),
+      findOrCreate: jest.fn(),
+    } as unknown as jest.Mocked<ConversationService>;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ConversationController],
-      providers: [
-        { provide: ConversationService, useValue: service },
-      ],
+      providers: [{ provide: ConversationService, useValue: service }],
     }).compile();
 
     controller = module.get<ConversationController>(ConversationController);

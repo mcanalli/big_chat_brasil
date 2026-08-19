@@ -43,7 +43,10 @@ export class ClientService {
       balance: client.balance,
       limit: client.limit,
       consumed: client.consumed,
-      available: client.planType === 'prepaid' ? client.balance : client.limit - client.consumed,
+      available:
+        client.planType === 'prepaid'
+          ? client.balance
+          : client.limit - client.consumed,
     };
   }
 }
