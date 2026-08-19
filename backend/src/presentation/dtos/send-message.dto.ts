@@ -36,8 +36,8 @@ export class SendMessageDto {
   @IsNotEmpty()
   channel: 'SMS' | 'WHATSAPP';
 
-  @ApiPropertyOptional({ enum: ['normal', 'urgent'], default: 'normal' })
-  @IsEnum(['normal', 'urgent'])
+  @ApiPropertyOptional({ enum: ['normal', 'urgente'], default: 'normal' })
+  @IsEnum(['normal', 'urgente'])
   @IsOptional()
-  priority?: 'normal' | 'urgent';
+  priority?: 'normal' | 'urgente';
 }

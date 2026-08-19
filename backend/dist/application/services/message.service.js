@@ -22,19 +22,22 @@ const conversation_service_1 = require("./conversation.service");
 const queue_service_1 = require("../../infrastructure/queue/queue.service");
 const message_status_history_entity_1 = require("../../domain/entities/message-status-history.entity");
 const uuid_1 = require("uuid");
+const pricing_service_1 = require("./pricing.service");
 let MessageService = class MessageService {
     messageRepo;
     clientRepo;
     statusHistoryRepo;
     conversationService;
     queueService;
+    pricingService;
     dataSource;
-    constructor(messageRepo, clientRepo, statusHistoryRepo, conversationService, queueService, dataSource) {
+    constructor(messageRepo, clientRepo, statusHistoryRepo, conversationService, queueService, pricingService, dataSource) {
         this.messageRepo = messageRepo;
         this.clientRepo = clientRepo;
         this.statusHistoryRepo = statusHistoryRepo;
         this.conversationService = conversationService;
         this.queueService = queueService;
+        this.pricingService = pricingService;
         this.dataSource = dataSource;
     }
     async sendMessage(dto) {
@@ -54,7 +57,7 @@ let MessageService = class MessageService {
                 console.log('[STEP 4.1] Erro: Cliente não encontrado');
                 throw new common_1.NotFoundException('Client not found');
             }
-            const unitCost = 1;
+            const unitCost = await this.pricingService.getCost(dto.priority || 'normal');
             const cost = unitCost;
             console.log('[STEP 5] Validando saldo/limite do cliente', {
                 planType: client.planType,
@@ -138,7 +141,7 @@ let MessageService = class MessageService {
             if (!client) {
                 throw new common_1.NotFoundException('Client not found');
             }
-            const unitCost = 1;
+            const unitCost = await this.pricingService.getCost(dto.priority || 'normal');
             const totalCost = unitCost * dto.recipientPhones.length;
             console.log('[BULK] Validando saldo/limite total', {
                 planType: client.planType,
@@ -252,6 +255,7 @@ exports.MessageService = MessageService = __decorate([
         typeorm_2.Repository,
         conversation_service_1.ConversationService,
         queue_service_1.QueueService,
+        pricing_service_1.PricingService,
         typeorm_2.DataSource])
 ], MessageService);
 //# sourceMappingURL=message.service.js.map

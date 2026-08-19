@@ -9,6 +9,8 @@ import { AuthModule } from './auth.module';
 import { ClientModule } from './client.module';
 import { AdminModule } from './admin.module';
 
+import { PricingModule } from './pricing.module';
+
 @Module({
   imports: [
     // 1. O ConfigModule DEVE vir primeiro e ser global
@@ -33,6 +35,8 @@ import { AdminModule } from './admin.module';
     }),
     AuthModule,
     ClientModule,
+    PricingModule,
+
     AdminModule,
     MessageModule,
   ],

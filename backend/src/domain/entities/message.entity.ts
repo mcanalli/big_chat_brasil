@@ -77,8 +77,8 @@ export class MessageEntity {
   /**
    * Prioridade na fila de envio: normal ou urgent.
    */
-  @Column({ type: 'enum', enum: ['normal', 'urgent'], default: 'normal' })
-  priority: 'normal' | 'urgent';
+  @Column({ type: 'enum', enum: ['normal', 'urgente'], default: 'normal' })
+  priority: 'normal' | 'urgente';
 
   /**
    * Estado atual no ciclo de vida da mensagem.

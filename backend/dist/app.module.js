@@ -20,6 +20,7 @@ const message_module_1 = require("./message.module");
 const auth_module_1 = require("./auth.module");
 const client_module_1 = require("./client.module");
 const admin_module_1 = require("./admin.module");
+const pricing_module_1 = require("./pricing.module");
 let AppModule = class AppModule {
     initialSeeder;
     constructor(initialSeeder) {
@@ -55,6 +56,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             auth_module_1.AuthModule,
             client_module_1.ClientModule,
+            pricing_module_1.PricingModule,
             admin_module_1.AdminModule,
             message_module_1.MessageModule,
         ],

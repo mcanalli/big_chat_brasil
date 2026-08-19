@@ -9,6 +9,7 @@ import { ConversationService } from './application/services/conversation.service
 import { MessageController } from './presentation/controllers/message.controller';
 import { ConversationController } from './presentation/controllers/conversation.controller';
 import { QueueModule } from './infrastructure/queue/queue.module';
+import { PricingModule } from './pricing.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { QueueModule } from './infrastructure/queue/queue.module';
       MessageStatusHistoryEntity,
     ]),
     QueueModule,
+    PricingModule, // Importar o módulo que fornece o PricingService
   ],
   controllers: [MessageController, ConversationController],
   providers: [MessageService, ConversationService],

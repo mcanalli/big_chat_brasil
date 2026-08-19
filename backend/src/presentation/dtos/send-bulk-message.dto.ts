@@ -16,7 +16,7 @@ export enum MessageChannel {
 
 export enum MessagePriority {
   NORMAL = 'normal',
-  HIGH = 'high',
+  URGENTE = 'urgente',
 }
 
 export class SendBulkMessageDto {

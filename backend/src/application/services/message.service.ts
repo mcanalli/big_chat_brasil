@@ -19,6 +19,7 @@ import {
   SendBulkMessageDto,
 } from '../../presentation/dtos/send-bulk-message.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { PricingService } from './pricing.service';
 
 @Injectable()
 export class MessageService {
@@ -31,6 +32,8 @@ export class MessageService {
     private readonly statusHistoryRepo: Repository<MessageStatusHistoryEntity>,
     private readonly conversationService: ConversationService,
     private readonly queueService: QueueService,
+    private readonly pricingService: PricingService,
+
     private readonly dataSource: DataSource,
   ) {}
 
@@ -59,7 +62,9 @@ export class MessageService {
         throw new NotFoundException('Client not found');
       }
 
-      const unitCost = 1;
+      const unitCost = await this.pricingService.getCost(
+        dto.priority || 'normal',
+      );
       const cost = unitCost;
       console.log('[STEP 5] Validando saldo/limite do cliente', {
         planType: client.planType,
@@ -170,7 +175,9 @@ export class MessageService {
         throw new NotFoundException('Client not found');
       }
 
-      const unitCost = 1;
+      const unitCost = await this.pricingService.getCost(
+        dto.priority || 'normal',
+      );
       const totalCost = unitCost * dto.recipientPhones.length;
 
       console.log('[BULK] Validando saldo/limite total', {

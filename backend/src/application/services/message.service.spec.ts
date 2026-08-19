@@ -1,5 +1,7 @@
 ﻿import { Test, TestingModule } from '@nestjs/testing';
 import { MessageService } from './message.service';
+import { PricingService } from './pricing.service';
+
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MessageEntity } from '../../domain/entities/message.entity';
 import { ClientEntity } from '../../domain/entities/client.entity';
@@ -15,6 +17,8 @@ describe('MessageService', () => {
   let service: MessageService;
 
   let messageRepo: jest.Mocked<Repository<MessageEntity>>;
+  let pricingService: jest.Mocked<PricingService>;
+
   let conversationService: jest.Mocked<ConversationService>;
 
   const mockQueryRunner = {
@@ -66,11 +70,19 @@ describe('MessageService', () => {
           provide: QueueService,
           useValue: { publishMessage: jest.fn().mockResolvedValue(null) },
         },
+        {
+          provide: PricingService,
+          useValue: { getCost: jest.fn().mockResolvedValue(0.25) },
+        },
       ],
     }).compile();
 
     service = module.get<MessageService>(MessageService);
+
     // clientRepo removed(getRepositoryToken(ClientEntity));
+    pricingService = module.get(PricingService);
+    expect(pricingService).toBeDefined();
+
     messageRepo = module.get(getRepositoryToken(MessageEntity));
     conversationService = module.get(ConversationService);
   });
@@ -85,7 +97,7 @@ describe('MessageService', () => {
     mockQueryRunner.manager.findOne.mockResolvedValue({
       id: 'client-1',
       planType: 'prepaid',
-      balance: 0.01,
+      balance: 0.2,
     });
 
     await expect(service.sendMessage(dto)).rejects.toThrow(
@@ -155,7 +167,7 @@ describe('MessageService', () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         id: 'client-1',
         planType: 'prepaid',
-        balance: 0.15,
+        balance: 0.4,
       });
 
       await expect(service.sendBulkMessage(dto)).rejects.toThrow(
@@ -215,8 +227,8 @@ describe('MessageService', () => {
       const result = await service.sendBulkMessage(dto);
 
       expect(result.totalRecipients).toBe(2);
-      expect(result.totalCost).toBe(2);
-      expect(client.balance).toBe(8);
+      expect(result.totalCost).toBe(0.5);
+      expect(client.balance).toBe(9.5);
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(result.queuedMessages.length).toBe(2);
     });

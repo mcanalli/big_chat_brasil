@@ -84,7 +84,7 @@ describe('Message Bulk Send (e2e)', () => {
     }
     const body = response.body as BulkResponse;
     expect(body.totalRecipients).toBe(2);
-    expect(body.totalCost).toBe(2);
+    expect(body.totalCost).toBe(0.5);
     expect(body.queuedMessages).toHaveLength(2);
 
     const updatedClient = await dataSource
@@ -93,7 +93,7 @@ describe('Message Bulk Send (e2e)', () => {
     if (!updatedClient) {
       throw new Error('Client not found after bulk message send');
     }
-    expect(Number(updatedClient.balance)).toBe(98);
+    expect(Number(updatedClient.balance)).toBe(99.5);
   });
 
   it('POST /messages/bulk - Erro 402 se saldo insuficiente', async () => {

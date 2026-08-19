@@ -5,6 +5,7 @@ import { ConversationEntity } from '../../../domain/entities/conversation.entity
 import { MessageEntity } from '../../../domain/entities/message.entity';
 import { MessageStatusHistoryEntity } from '../../../domain/entities/message-status-history.entity';
 import { FinancialTransactionEntity } from '../../../domain/entities/financial-transaction.entity';
+import { MessagePricingEntity } from '../../../domain/entities/message-pricing.entity';
 
 @Injectable()
 export class InitialSeeder {
@@ -117,6 +118,36 @@ export class InitialSeeder {
           },
         );
         await queryRunner.manager.save(transactionDebit);
+        // 7. Configurar Preços de Mensagens
+        const normalPricing = await queryRunner.manager.findOne(
+          MessagePricingEntity,
+          {
+            where: { priority: 'normal' },
+          },
+        );
+        if (!normalPricing) {
+          await queryRunner.manager.save(
+            queryRunner.manager.create(MessagePricingEntity, {
+              priority: 'normal',
+              cost: 0.25,
+            }),
+          );
+        }
+
+        const urgentePricing = await queryRunner.manager.findOne(
+          MessagePricingEntity,
+          {
+            where: { priority: 'urgente' },
+          },
+        );
+        if (!urgentePricing) {
+          await queryRunner.manager.save(
+            queryRunner.manager.create(MessagePricingEntity, {
+              priority: 'urgente',
+              cost: 0.5,
+            }),
+          );
+        }
       }
 
       await queryRunner.commitTransaction();
