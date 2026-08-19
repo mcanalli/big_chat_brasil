@@ -63,6 +63,26 @@ export class MessageEntity {
   channel!: 'SMS' | 'WHATSAPP';
 
   /**
+   * Direção da mensagem: inbound (recebida) ou outbound (enviada).
+   */
+  @Column({
+    type: 'enum',
+    enum: ['inbound', 'outbound'],
+    default: 'outbound',
+  })
+  direction!: 'inbound' | 'outbound';
+
+  /**
+   * Tipo da mensagem: text ou media.
+   */
+  @Column({
+    type: 'enum',
+    enum: ['text', 'media'],
+    default: 'text',
+  })
+  type!: 'text' | 'media';
+
+  /**
    * Conteúdo/Texto da mensagem.
    */
   @Column({ type: 'text' })

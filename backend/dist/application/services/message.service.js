@@ -244,6 +244,54 @@ let MessageService = class MessageService {
             order: { timestamp: 'ASC' },
         });
     }
+    async receiveInboundMessage(dto) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const client = await queryRunner.manager.findOne(client_entity_1.ClientEntity, {
+                where: { id: dto.clientId },
+            });
+            if (!client) {
+                throw new common_1.NotFoundException('Client not found');
+            }
+            const conversation = await this.conversationService.findOrCreate(client.id, dto.from, dto.senderName, queryRunner.manager);
+            const message = queryRunner.manager.create(message_entity_1.MessageEntity, {
+                senderId: client.id,
+                content: dto.content,
+                channel: dto.channel,
+                recipientPhone: dto.from,
+                conversationId: conversation.id,
+                cost: 0,
+                status: 'delivered',
+                direction: 'inbound',
+                type: 'text',
+                priority: 'normal',
+            });
+            const savedMessage = await queryRunner.manager.save(message);
+            const history = queryRunner.manager.create(message_status_history_entity_1.MessageStatusHistoryEntity, {
+                messageId: savedMessage.id,
+                status: 'delivered',
+                details: 'Inbound message received',
+            });
+            await queryRunner.manager.save(history);
+            conversation.lastMessageContent = dto.content;
+            conversation.lastMessageTime = new Date();
+            conversation.unreadCount = (conversation.unreadCount || 0) + 1;
+            await queryRunner.manager.save(conversation);
+            await queryRunner.commitTransaction();
+            return savedMessage;
+        }
+        catch (err) {
+            if (queryRunner.isTransactionActive) {
+                await queryRunner.rollbackTransaction();
+            }
+            throw err;
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
 };
 exports.MessageService = MessageService;
 exports.MessageService = MessageService = __decorate([

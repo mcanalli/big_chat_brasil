@@ -18,6 +18,8 @@ import {
   BulkSendResponseDto,
   SendBulkMessageDto,
 } from '../../presentation/dtos/send-bulk-message.dto';
+import { InboundMessageDto } from '../../presentation/dtos/inbound-message.dto';
+
 import { v4 as uuidv4 } from 'uuid';
 import { PricingService } from './pricing.service';
 
@@ -311,4 +313,69 @@ export class MessageService {
       order: { timestamp: 'ASC' },
     });
   }
+
+  async receiveInboundMessage(dto: InboundMessageDto): Promise<MessageEntity> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const client = await queryRunner.manager.findOne(ClientEntity, {
+        where: { id: dto.clientId },
+      });
+
+      if (!client) {
+        throw new NotFoundException('Client not found');
+      }
+
+      const conversation = await this.conversationService.findOrCreate(
+        client.id,
+        dto.from,
+        dto.senderName,
+        queryRunner.manager,
+      );
+
+      const message = queryRunner.manager.create(MessageEntity, {
+        senderId: client.id, // O cliente da plataforma é o destinatário lógico, mas o senderId na mensagem costuma referenciar o dono da conta
+        content: dto.content,
+        channel: dto.channel,
+        recipientPhone: dto.from,
+        conversationId: conversation.id,
+        cost: 0,
+        status: 'delivered',
+        direction: 'inbound',
+        type: 'text',
+        priority: 'normal',
+      });
+
+      const savedMessage = await queryRunner.manager.save(message);
+
+      const history = queryRunner.manager.create(MessageStatusHistoryEntity, {
+        messageId: savedMessage.id,
+        status: 'delivered',
+        details: 'Inbound message received',
+      });
+      await queryRunner.manager.save(history);
+
+      conversation.lastMessageContent = dto.content;
+      conversation.lastMessageTime = new Date();
+      conversation.unreadCount = (conversation.unreadCount || 0) + 1;
+      await queryRunner.manager.save(conversation);
+
+      await queryRunner.commitTransaction();
+
+      // Opcional: Emitir para fila se houver processamento posterior ou Webhook de saída para o cliente
+      // this.queueService.publishMessage(savedMessage);
+
+      return savedMessage;
+    } catch (err) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
+

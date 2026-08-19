@@ -7,6 +7,7 @@ import { SendMessageDto } from '../../presentation/dtos/send-message.dto';
 import { ReportFilterDto } from '../../presentation/dtos/report-filter.dto';
 import { MessageStatusHistoryEntity } from '../../domain/entities/message-status-history.entity';
 import { BulkSendResponseDto, SendBulkMessageDto } from '../../presentation/dtos/send-bulk-message.dto';
+import { InboundMessageDto } from '../../presentation/dtos/inbound-message.dto';
 import { PricingService } from './pricing.service';
 export declare class MessageService {
     private readonly messageRepo;
@@ -26,4 +27,5 @@ export declare class MessageService {
         lastPage: number;
     }>;
     getHistory(messageId: string): Promise<MessageStatusHistoryEntity[]>;
+    receiveInboundMessage(dto: InboundMessageDto): Promise<MessageEntity>;
 }

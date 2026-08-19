@@ -4,6 +4,7 @@ import { MessageService } from '../../application/services/message.service';
 import { SendMessageDto } from '../dtos/send-message.dto';
 import { ReportFilterDto } from '../dtos/report-filter.dto';
 import { SendBulkMessageDto } from '../dtos/send-bulk-message.dto';
+import { InboundMessageDto } from '../dtos/inbound-message.dto';
 
 @ApiTags('Messages')
 @Controller('messages')
@@ -16,6 +17,12 @@ export class MessageController {
     return this.messageService.sendMessage(dto);
   }
 
+  @Post('inbound')
+  @ApiOperation({ summary: 'Receber mensagem inbound (webhook simulado)' })
+  async handleInbound(@Body() dto: InboundMessageDto) {
+    return this.messageService.receiveInboundMessage(dto);
+  }
+
   @Post('bulk')
   @ApiOperation({ summary: 'Enviar mensagens em massa' })
   async sendBulk(@Body() dto: SendBulkMessageDto) {
@@ -23,14 +30,15 @@ export class MessageController {
   }
 
   @Get('report')
-  @ApiOperation({ summary: 'RelatÃ³rio de mensagens paginado' })
+  @ApiOperation({ summary: 'Relatório de mensagens paginado' })
   async getReport(@Query() filter: ReportFilterDto) {
     return this.messageService.getReport(filter);
   }
 
   @Get(':id/history')
-  @ApiOperation({ summary: 'HistÃ³rico de status de uma mensagem' })
+  @ApiOperation({ summary: 'Histórico de status de uma mensagem' })
   async getHistory(@Param('id') id: string) {
     return this.messageService.getHistory(id);
   }
 }
+

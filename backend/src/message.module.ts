@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessageEntity } from './domain/entities/message.entity';
 import { ClientEntity } from './domain/entities/client.entity';
 import { ConversationEntity } from './domain/entities/conversation.entity';
+import { RecipientEntity } from './domain/entities/recipient.entity';
 import { MessageStatusHistoryEntity } from './domain/entities/message-status-history.entity';
 import { MessageService } from './application/services/message.service';
 import { ConversationService } from './application/services/conversation.service';
@@ -17,6 +18,7 @@ import { PricingModule } from './pricing.module';
       MessageEntity,
       ClientEntity,
       ConversationEntity,
+      RecipientEntity,
       MessageStatusHistoryEntity,
     ]),
     QueueModule,
@@ -27,3 +29,4 @@ import { PricingModule } from './pricing.module';
   exports: [MessageService, ConversationService],
 })
 export class MessageModule {}
+

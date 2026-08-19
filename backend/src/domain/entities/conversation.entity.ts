@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ClientEntity } from './client.entity';
 import { MessageEntity } from './message.entity';
+import { RecipientEntity } from './recipient.entity';
 
 /**
  * Thread de conversa agrupando interações entre o cliente e um usuário final.
@@ -35,6 +36,21 @@ export class ConversationEntity {
   })
   @JoinColumn({ name: 'clientId' })
   client: ClientEntity;
+
+  /**
+   * FK para o destinatário (Recipient).
+   */
+  @Column({ name: 'recipientId', nullable: true })
+  recipientId: string;
+
+  /**
+   * Entidade do destinatário associada.
+   */
+  @ManyToOne(() => RecipientEntity, (recipient) => recipient.conversations, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'recipientId' })
+  recipient: RecipientEntity;
 
   /**
    * Número de telefone do destinatário (com DDD).
@@ -75,3 +91,4 @@ export class ConversationEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+

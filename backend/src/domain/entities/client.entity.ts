@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { ConversationEntity } from './conversation.entity';
 import { FinancialTransactionEntity } from './financial-transaction.entity';
+import { RecipientEntity } from './recipient.entity';
 
 /**
  * Representa a empresa ou pessoa física cliente da plataforma BCB.
@@ -74,6 +75,12 @@ export class ClientEntity {
   conversations: ConversationEntity[];
 
   /**
+   * Lista de destinatários associados a este cliente.
+   */
+  @OneToMany(() => RecipientEntity, (recipient) => recipient.client)
+  recipients: RecipientEntity[];
+
+  /**
    * Lista de transações financeiras associadas a este cliente.
    */
   @OneToMany(
@@ -85,3 +92,4 @@ export class ClientEntity {
   @CreateDateColumn()
   createdAt: Date;
 }
+
