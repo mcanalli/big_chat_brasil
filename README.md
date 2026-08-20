@@ -1,13 +1,19 @@
 # Big Chat Brasil (BCB) - Plataforma de Mensagens
 
-Este repositório contém a solução completa para o desafio **Big Chat Brasil**, desenvolvida com uma arquitetura moderna e escalável utilizando **NestJS**, **Angular**, **PostgreSQL**, **Redis** e **RabbitMQ**.
+## 1. Visão Geral do Projeto
+O **Big Chat Brasil** é uma plataforma de chat e mensageria em tempo real de alto desempenho. A solução foi projetada para simular o ciclo completo de entrega de mensagens, oferecendo gestão robusta de saldo/créditos por tipo de cliente (pré-pago e pós-pago) e priorização inteligente de envios (filas diferenciadas para mensagens urgentes e normais).
 
----
+## 2. Arquitetura & Tecnologias Utilizadas
 
-## 🏗️ Arquitetura do Sistema
+O sistema utiliza uma arquitetura orientada a eventos (Event-Driven) e micro-processamento para garantir escalabilidade e resiliência.
 
-O sistema é baseado em uma arquitetura orientada a eventos (Event-Driven), permitindo o processamento assíncrono de mensagens e atualizações em tempo real.
+*   **Frontend**: Angular 17+ (Standalone Components, Signals, RxJS, Angular Material, SSE Client).
+*   **Backend**: NestJS (TypeScript, TypeORM, SSE/Server-Sent Events para atualizações em tempo real).
+*   **Worker**: NestJS Microservice (Consumidor de filas RabbitMQ dedicado ao processamento de mensagens e simulação de ciclo de vida).
+*   **Banco de Dados & Cache**: PostgreSQL (Persistência relacional) e Redis (Cache de alta performance e controle de concorrência).
+*   **Mensageria / Event Broker**: RabbitMQ (Gerenciamento de filas de processamento e distribuição de eventos).
 
+### Diagrama de Arquitetura
 ```mermaid
 graph TD
     FE[Frontend Angular] <-->|REST & SSE| API[Backend API]
@@ -19,69 +25,69 @@ graph TD
     WK -->|Events| RMQ
 ```
 
----
+## 3. Pré-requisitos
+Antes de começar, certifique-se de ter instalado em sua máquina:
+*   **Docker Engine 20.10+** e **Docker Compose v2+**.
+*   **Git**.
 
-## 📚 Documentação Técnica Completa
+## 4. Guia Rápido de Execução (Passo a Passo)
 
-Para detalhes aprofundados sobre a arquitetura, fluxos e padrões, acesse a pasta [/docs](./docs):
-
-### 1. Arquitetura e Fluxo
-*   [Componentes (C4 Nível 3)](./docs/architecture/c4-components.md)
-*   [Fluxo Integrado Ponta a Ponta](./docs/architecture/c4-integrated-flow.md)
-*   [Ciclo de Vida da Mensagem (Sequência)](./docs/architecture/sequence-diagram-messages.md)
-
-### 2. Design Docs
-*   [Backend Design Doc](./docs/design-docs/backend-design-doc.md)
-*   [Frontend Design Doc](./docs/design-docs/frontend-design-doc.md)
-
-### 3. Guias e Referência
-*   [Documentação da API (Endpoints & SSE)](./docs/reference/api-documentation.md)
-*   [Guia de Telas e Funcionalidades](./docs/reference/frontend-screens-guide.md)
-*   [Especificação Técnica Detalhada](./docs/technical-spec.md)
-
-### 4. Extra
-*   [Esquema do Banco de Dados](./docs/extra/database-schema.md)
-*   [Guia de Operação e Troubleshooting](./docs/extra/troubleshooting-and-ops.md)
-*   [Padrões de Código e Contribuição](./docs/extra/contributing-and-standards.md)
-
----
-
-## 🚀 Como Rodar
-
-### Pré-requisitos
-*   Docker e Docker Compose instalados.
-
-### Execução via Docker (Recomendado)
-Para subir todo o ecossistema (API, Worker, PostgreSQL, RabbitMQ, Redis e Frontend):
+Siga os comandos abaixo para clonar e subir a aplicação completa em uma máquina limpa:
 
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
+# 1. Clonar o repositório
+git clone https://github.com/seu-usuario/big-chat-brasil.git
+cd big-chat-brasil
+
+# 2. Criar arquivo de variáveis de ambiente
+# O comando abaixo copia o exemplo configurado para o ambiente Docker
+cp .env.example .env
+
+# 3. Subir todos os containers
+# Este comando irá baixar as imagens, buildar os serviços e iniciar o ecossistema
+docker compose up --build
 ```
 
-### Portas Úteis:
-*   **Frontend:** [http://localhost:4200](http://localhost:4200)
-*   **Backend API:** [http://localhost:3000/api](http://localhost:3000/api)
-*   **Swagger Docs:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
-*   **RabbitMQ Management:** [http://localhost:15672](http://localhost:15672) (user: `bcb_mq_user`, pass: `bcb_mq_password`)
+## 5. Mapeamento de Serviços e Portas
+
+Após a execução, os serviços estarão disponíveis nos seguintes endereços:
+
+| Serviço | URL / Acesso | Credenciais (Padrão) |
+| :--- | :--- | :--- |
+| **Frontend Web** | [http://localhost:4200](http://localhost:4200) | - |
+| **API Backend** | [http://localhost:3000](http://localhost:3000) | - |
+| **Swagger UI (Docs API)** | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) | - |
+| **Painel RabbitMQ** | [http://localhost:15672](http://localhost:15672) | `guest` / `guest` (ou as definidas no .env) |
+| **PostgreSQL** | `localhost:5432` | `bcb_user` / `bcb_password` |
+| **Redis** | `localhost:6379` | - |
+
+## 6. Funcionalidades Chave & Ciclo de Vida da Mensagem
+
+### Gestão de Prioridade
+O sistema diferencia mensagens por urgência:
+*   **Urgente**: Processamento imediato via fila de alta prioridade.
+*   **Normal**: Processamento assíncrono em fila convencional.
+
+### Ciclo de Vida Simulado
+As mensagens passam por estados automáticos simulados pelo **Worker**, refletindo um cenário real de operadora:
+1.  `queued` (Na fila)
+2.  `processing` (Sendo processada pelo Worker)
+3.  `sent` (Enviada para o gateway)
+4.  `delivered` (Entregue no destino)
+5.  `read` (Lida pelo destinatário)
+6.  *Ou `failed` em caso de erro/falta de saldo.*
+
+### Atualizações em Tempo Real
+Graças ao uso de **Server-Sent Events (SSE)**, o Frontend recebe notificações instantâneas do Worker (via Backend) sempre que o status de uma mensagem muda, sem necessidade de refresh ou polling.
+
+## 7. Documentação Detalhada
+Para informações técnicas mais profundas, consulte nossa base de documentos na pasta `/docs`:
+
+*   [Arquitetura e Fluxo de Dados](./docs/architecture/architecture.md)
+*   [Especificação Técnica](./docs/technical-spec.md)
+*   [Documentação da API](./docs/reference/api-documentation.md)
+*   [Design do Frontend](./docs/design-docs/frontend-design-doc.md)
 
 ---
-
-## 🧪 Como Testar a Autenticação
-
-A autenticação é baseada no documento do cliente (CPF ou CNPJ). Ao iniciar a aplicação, o banco de dados é populado automaticamente com os seguintes usuários de teste:
-
-1.  **Cliente Pré-pago (Empresa Alpha)**
-    - **Documento (CPF):** `11111111111`
-    - **Saldo Inicial:** R$ 10,00
-2.  **Cliente Pós-pago (Empresa Beta)**
-    - **Documento (CNPJ):** `22222222222222`
-    - **Limite:** R$ 50,00
-
----
-
-## 🛠 Tecnologias Principais
-
-*   **Backend**: NestJS v11, TypeORM, RabbitMQ, Redis, SSE.
-*   **Frontend**: Angular v22, Signals, RxJS, Angular Material.
-*   **Infra**: Docker, PostgreSQL.
+Desenvolvido como parte do desafio técnico Big Chat Brasil.
 
