@@ -1,4 +1,4 @@
-Ôªøimport { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -60,7 +60,7 @@ describe('Message Bulk Send (e2e)', () => {
     }
   });
 
-  it('POST /messages/bulk - Sucesso com m√∫ltiplos destinat√°rios', async () => {
+  it('POST /messages/bulk - Sucesso com m˙ltiplos destinat·rios', async () => {
     const payload = {
       senderId: client.id,
       recipientPhones: ['5511900000001', '5511900000002'],
@@ -70,7 +70,7 @@ describe('Message Bulk Send (e2e)', () => {
     };
 
     const response = await request(
-      app.getHttpServer() as string | object | undefined,
+      app.getHttpServer(),
     )
       .post('/messages/bulk')
       .send(payload)
@@ -108,7 +108,7 @@ describe('Message Bulk Send (e2e)', () => {
       channel: 'SMS',
     };
 
-    await request(app.getHttpServer() as string | object | undefined)
+    await request(app.getHttpServer())
       .post('/messages/bulk')
       .send(payload)
       .expect(402);
@@ -129,15 +129,15 @@ describe('Message Bulk Send (e2e)', () => {
     };
 
     const response = await request(
-      app.getHttpServer() as string | object | undefined,
+      app.getHttpServer(),
     )
       .post('/messages/bulk')
       .send(payload)
       .expect(201);
 
     const body = response.body;
-    // O custo de WHATSAPP urgente deve ser 0.50 (baseado no PricingService se ele seguir o padr√£o)
-    // Se o custo normal √© 0.25 e o urgente √© 0.50, para 2 mensagens o total √© 1.00
+    // O custo de WHATSAPP urgente deve ser 0.50 (baseado no PricingService se ele seguir o padr„o)
+    // Se o custo normal È 0.25 e o urgente È 0.50, para 2 mensagens o total È 1.00
     expect(body.totalCost).toBe(1.0);
 
     const messageRepo = dataSource.getRepository(MessageEntity);

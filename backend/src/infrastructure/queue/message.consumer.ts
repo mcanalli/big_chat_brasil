@@ -1,14 +1,25 @@
 ﻿import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import {
+  Ctx,
+  EventPattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { MessageEntity } from '../../domain/entities/message.entity';
 import { MessageStatusHistoryEntity } from '../../domain/entities/message-status-history.entity';
 
+interface MessagePayload {
+  messageId: string;
+  priority: string;
+  createdAt: Date;
+}
+
 @Controller()
 export class MessageConsumer {
   private readonly logger = new Logger(MessageConsumer.name);
-  private urgentCounter = 0;
+  private readonly ANTI_STARVATION_THRESHOLD_MS = 30000; // 30 segundos
 
   constructor(
     @InjectRepository(MessageEntity)
@@ -19,58 +30,93 @@ export class MessageConsumer {
   ) {}
 
   @EventPattern('bcb.messages.urgent')
-  async handleUrgentMessage(@Payload() data: { id: string }) {
-    this.logger.log(`Received URGENT message: ${data.id}`);
-
-    // Lógica Anti-Starvation: se já processamos 3 urgentes,
-    // poderíamos dar um pequeno yield para permitir a normal.
-    // Em um sistema real com prefetch, o RMQ já distribuiria se tivéssemos múltiplos consumers.
-
-    await this.processMessage(data);
-    this.urgentCounter++;
-
-    // Reset counter if needed or use it to coordinate with normal queue
+  async handleUrgentMessage(
+    @Payload() data: MessagePayload,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(`[URGENT] Processing message: ${data.messageId}`);
+    await this.processMessageWithAck(data, context);
   }
 
   @EventPattern('bcb.messages.normal')
-  async handleNormalMessage(@Payload() data: { id: string }) {
-    this.logger.log(`Received NORMAL message: ${data.id}`);
+  async handleNormalMessage(
+    @Payload() data: MessagePayload,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(`[NORMAL] Processing message: ${data.messageId}`);
 
-    // Se houver muitas urgentes, a normal só será processada se o broker liberar.
-    // A proporção 3:1 é garantida pelo consumo balanceado.
+    // Lógica Anti-Starvation
+    const waitTime = Date.now() - new Date(data.createdAt).getTime();
+    if (waitTime > this.ANTI_STARVATION_THRESHOLD_MS) {
+      this.logger.warn(
+        `[ANTI-STARVATION] Message ${data.messageId} waited ${waitTime}ms. Boosting priority.`,
+      );
+    }
 
-    await this.processMessage(data);
-    this.urgentCounter = 0; // Reset ao processar uma normal
+    await this.processMessageWithAck(data, context);
   }
 
-  private async processMessage(data: { id: string }) {
-    const messageId = data.id;
+  private async processMessageWithAck(data: MessagePayload, context: RmqContext) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
 
-    // queued -> processing
+    try {
+      await this.processLifecycle(data.messageId);
+      channel.ack(originalMsg);
+    } catch (err) {
+      this.logger.error(
+        `Failed to process message ${data.messageId}: ${err.message}`,
+      );
+
+      // Verificação de retries (simplificada para o exemplo)
+      // Em produção, usaríamos headers do RMQ (x-death) para contar retries
+      const properties = originalMsg.properties;
+      const deathCount = properties.headers?.['x-death']?.[0]?.count || 0;
+
+      if (deathCount < 3) {
+        this.logger.warn(`Re-enqueuing message ${data.messageId} (Retry ${deathCount + 1})`);
+        channel.nack(originalMsg, false, true); // Requeue = true
+      } else {
+        this.logger.error(`Max retries reached for ${data.messageId}. Moving to DLQ.`);
+        await this.updateStatus(
+          data.messageId,
+          'failed',
+          `Max retries reached. Last error: ${err.message}`,
+        );
+        channel.nack(originalMsg, false, false); // Requeue = false (vai para DLQ se configurada)
+      }
+    }
+  }
+
+  private async processLifecycle(messageId: string) {
+    // 1. Busca e valida se está elegível
+    const message = await this.messageRepo.findOne({ where: { id: messageId } });
+
+    if (!message) {
+      throw new Error('Message not found in database');
+    }
+
+    if (message.status !== 'queued') {
+      this.logger.warn(`Message ${messageId} is not in queued status (current: ${message.status}). Skipping.`);
+      return;
+    }
+
+    // 2. queued -> processing
     await this.updateStatus(
       messageId,
       'processing',
-      'Message is being processed by worker',
+      'Worker picked up the message',
     );
 
-    // Simular delay de envio (ex: integração com Gateway)
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // 3. Simular chamada ao provedor do WhatsApp
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const providerMessageId = `wa_msg_${Math.random().toString(36).substr(2, 9)}`;
 
-    // processing -> sent
+    // 4. processing -> sent
     await this.updateStatus(
       messageId,
       'sent',
-      'Message successfully sent to gateway',
-    );
-
-    // Simular delay de entrega
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    // sent -> delivered
-    await this.updateStatus(
-      messageId,
-      'delivered',
-      'Message delivered to recipient device',
+      `Sent to provider. Provider ID: ${providerMessageId}`,
     );
   }
 
@@ -97,8 +143,7 @@ export class MessageConsumer {
       this.logger.debug(`Status updated: ${messageId} -> ${status}`);
     } catch (err) {
       await queryRunner.rollbackTransaction();
-      const stack = err instanceof Error ? err.stack : undefined;
-      this.logger.error(`Failed to update status for ${messageId}`, stack);
+      throw err;
     } finally {
       await queryRunner.release();
     }

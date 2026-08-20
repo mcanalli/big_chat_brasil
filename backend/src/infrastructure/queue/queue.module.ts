@@ -31,8 +31,8 @@ import { MessageStatusHistoryEntity } from '../../domain/entities/message-status
       },
     ]),
   ],
-  providers: [QueueService, MessageConsumer],
-  controllers: [QueueController],
+  providers: [QueueService],
+  controllers: [QueueController, MessageConsumer],
   exports: [QueueService],
 })
 export class QueueModule {}

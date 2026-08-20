@@ -5,6 +5,7 @@ import { PricingService } from './pricing.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MessageEntity } from '../../domain/entities/message.entity';
 import { ClientEntity } from '../../domain/entities/client.entity';
+import { ConversationEntity } from '../../domain/entities/conversation.entity';
 import { MessageStatusHistoryEntity } from '../../domain/entities/message-status-history.entity';
 import { ConversationService } from './conversation.service';
 import { DataSource, Repository } from 'typeorm';
@@ -15,6 +16,7 @@ import {
   BulkSendResponseDto,
   SendBulkMessageDto,
   MessageChannel,
+  MessagePriority,
 } from '../../presentation/dtos/send-bulk-message.dto';
 
 describe('MessageService', () => {
@@ -134,6 +136,7 @@ describe('MessageService', () => {
       channel: MessageChannel.WHATSAPP,
       content: 'Oi',
       recipientPhones: ['5511999999999'],
+      priority: MessagePriority.NORMAL,
     };
 
     mockQueryRunner.manager.findOne.mockResolvedValue({
@@ -166,6 +169,7 @@ describe('MessageService', () => {
         channel: MessageChannel.SMS,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
+        priority: MessagePriority.NORMAL,
       };
 
       mockQueryRunner.manager.findOne.mockResolvedValue({
@@ -188,6 +192,7 @@ describe('MessageService', () => {
         channel: MessageChannel.WHATSAPP,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
+        priority: MessagePriority.NORMAL,
       };
 
       mockQueryRunner.manager.findOne.mockResolvedValue({
@@ -212,6 +217,7 @@ describe('MessageService', () => {
         content: 'Bulk SMS',
         recipientPhones: ['phone1', 'phone2'],
         recipientNames: ['Name 1', 'Name 2'],
+        priority: MessagePriority.NORMAL,
       };
 
       const client = {
@@ -243,6 +249,7 @@ describe('MessageService', () => {
         channel: MessageChannel.SMS,
         content: 'Bulk',
         recipientPhones: ['phone1', 'phone2'],
+        priority: MessagePriority.NORMAL,
       };
 
       mockQueryRunner.manager.findOne.mockResolvedValue({

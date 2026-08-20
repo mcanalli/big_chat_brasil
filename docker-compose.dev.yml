@@ -74,8 +74,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: bcb-backend-dev
     restart: unless-stopped
-    # command: npm run start:dev
-    command: node node_modules/@nestjs/cli/bin/nest.js start --watch
+    command: npm run start:dev
     ports:
       - "3000:3000"
     environment:
@@ -119,8 +118,33 @@ services:
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: bcb-worker-dev
+    restart: unless-stopped
+    command: npm run start:worker
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: bcb_user
+      DB_PASSWORD: bcb_password
+      DB_NAME: bcb_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URI: amqp://bcb_mq_user:bcb_mq_password@rabbitmq:5672
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
     depends_on:
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - bcb-network
 

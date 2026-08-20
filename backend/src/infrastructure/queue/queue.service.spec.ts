@@ -3,6 +3,7 @@ import { QueueService } from './queue.service';
 
 import { ClientProxy } from '@nestjs/microservices';
 import { of } from 'rxjs';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 describe('QueueService', () => {
   let service: QueueService;
@@ -24,22 +25,32 @@ describe('QueueService', () => {
   });
 
   it('should publish to urgent queue when priority is urgent', () => {
-    const message = { id: '1', priority: 'urgent' };
+    const timestamp = new Date();
+    const message = { id: '1', priority: 'urgente', timestamp };
     service.publishMessage(message);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(clientProxy.emit).toHaveBeenCalledWith(
       'bcb.messages.urgent',
-      message,
+      {
+        messageId: '1',
+        priority: 'urgente',
+        createdAt: timestamp,
+      },
     );
   });
 
   it('should publish to normal queue when priority is normal', () => {
-    const message = { id: '2', priority: 'normal' };
+    const timestamp = new Date();
+    const message = { id: '2', priority: 'normal', timestamp };
     service.publishMessage(message);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(clientProxy.emit).toHaveBeenCalledWith(
       'bcb.messages.normal',
-      message,
+      {
+        messageId: '2',
+        priority: 'normal',
+        createdAt: timestamp,
+      },
     );
   });
 });

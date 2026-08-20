@@ -1,9 +1,8 @@
+import { describe, beforeEach, it, expect, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminController } from './admin.controller';
 import { AdminService } from '../../application/services/admin.service';
-import { AddCreditsDto } from '../dtos/add-credits.dto';
-import { AdjustLimitDto } from '../dtos/adjust-limit.dto';
-import { ConvertPlanDto } from '../dtos/convert-plan.dto';
+import { AddCreditsDto, AdjustLimitDto, ConvertPlanDto } from '../dtos/admin.dto';
 
 describe('AdminController', () => {
   let controller: AdminController;
@@ -11,10 +10,24 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     service = {
-      addCredits: jest.fn().mockResolvedValue({ success: true }),
-      adjustLimit: jest.fn().mockResolvedValue({ success: true }),
-      convertPlan: jest.fn().mockResolvedValue({ success: true }),
-      getTransactions: jest.fn().mockResolvedValue([]),
+      addCredits: jest
+        .fn<AdminService['addCredits']>()
+        .mockResolvedValue({ success: true, newBalance: 0 }),
+      adjustLimit: jest
+        .fn<AdminService['adjustLimit']>()
+        .mockResolvedValue({
+          success: true,
+          previousLimit: 0,
+          newLimit: 100,
+        }),
+      convertPlan: jest
+        .fn<AdminService['convertPlan']>()
+        .mockResolvedValue({
+          success: true,
+        } as unknown as Awaited<ReturnType<AdminService['convertPlan']>>),
+      getTransactions: jest
+        .fn<AdminService['getTransactions']>()
+        .mockResolvedValue([]),
     } as unknown as jest.Mocked<AdminService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -42,7 +55,7 @@ describe('AdminController', () => {
   });
 
   it('should convert plan', async () => {
-    const dto: ConvertPlanDto = { planType: 'postpaid' };
+    const dto: ConvertPlanDto = { newPlanType: 'postpaid' };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     expect(await controller.convertPlan('1', dto)).toEqual({ success: true });
   });

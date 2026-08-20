@@ -3,10 +3,25 @@
 
 # Compilação e Builds
 **/dist/
+**/dist_manual/
+**/dist_test/
 **/build/
 **/.angular/
 
-# Outros
+# Testes e Relatórios
+**/output_test/
+**/coverage/
+**/.nyc_output/
+
+# Variáveis de Ambiente e Logs
 .env
+.env.*
+!.env.example
 *.log
+npm-debug.log*
+
+# Sistema Operacional e IDEs
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

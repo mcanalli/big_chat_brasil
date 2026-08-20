@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Param, Body, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConversationService } from '../../application/services/conversation.service';
+import { CreateConversationDto } from '../dtos/create-conversation.dto';
 
 @ApiTags('Conversations')
 @Controller('conversations')
@@ -9,18 +10,13 @@ export class ConversationController {
 
   @Post()
   @ApiOperation({ summary: 'Criar ou recuperar uma conversa' })
-  async findOrCreate(
-    @Body()
-    body: {
-      clientId: string;
-      recipientPhone: string;
-      recipientName?: string;
-    },
-  ) {
+  @ApiResponse({ status: 201, description: 'Conversa criada ou recuperada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos.' })
+  async findOrCreate(@Body() dto: CreateConversationDto) {
     return this.conversationService.findOrCreate(
-      body.clientId,
-      body.recipientPhone,
-      body.recipientName,
+      dto.clientId,
+      dto.recipientPhone,
+      dto.recipientName,
     );
   }
 
@@ -36,3 +32,4 @@ export class ConversationController {
     return this.conversationService.findById(id);
   }
 }
+

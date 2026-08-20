@@ -5,12 +5,18 @@ import { ClientProxy } from '@nestjs/microservices';
 export class QueueService {
   constructor(@Inject('RABBITMQ_SERVICE') private client: ClientProxy) {}
 
-  publishMessage(message: { priority?: string }) {
-    // Usamos o nome da fila como o padrão do evento para o NestJS RMQ
+  publishMessage(message: { id: string; priority?: string; timestamp: Date }) {
     const pattern =
-      message.priority === 'urgent'
+      message.priority === 'urgente'
         ? 'bcb.messages.urgent'
         : 'bcb.messages.normal';
-    return this.client.emit(pattern, message);
+
+    const payload = {
+      messageId: message.id,
+      priority: message.priority || 'normal',
+      createdAt: message.timestamp,
+    };
+
+    return this.client.emit(pattern, payload);
   }
 }
