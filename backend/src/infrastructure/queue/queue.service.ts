@@ -19,4 +19,12 @@ export class QueueService {
 
     return this.client.emit(pattern, payload);
   }
+
+  publishStatusUpdate(messageId: string, status: string) {
+    return this.client.emit('message.status.updated', {
+      messageId,
+      status,
+      timestamp: new Date(),
+    });
+  }
 }

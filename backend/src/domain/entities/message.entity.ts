@@ -6,6 +6,7 @@ import {
   OneToMany,
   JoinColumn,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { ConversationEntity } from './conversation.entity';
 import { ClientEntity } from './client.entity';
@@ -93,6 +94,12 @@ export class MessageEntity {
    */
   @CreateDateColumn({ type: 'timestamp' })
   timestamp!: Date;
+
+  /**
+   * Data/hora da última atualização de status.
+   */
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt!: Date;
 
   /**
    * Prioridade na fila de envio: normal ou urgent.
