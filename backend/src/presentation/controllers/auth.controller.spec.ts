@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AuthController } from './auth.controller';
 import { AuthService } from '../../application/services/auth.service';
 import { AuthRequestDto } from '../dtos/auth.dto';

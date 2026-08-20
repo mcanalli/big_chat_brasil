@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -20,7 +20,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ChatService } from '../../core/services/chat.service';
 import { PollingService } from '../../core/services/polling.service';
 import { Conversation } from '../../core/models/conversation.model';
-import { Message } from '../../core/models/message.model';
+import { Message, SendMessageRequest } from '../../core/models/message.model';
 import { BulkMessageDialogComponent } from '../../components/bulk-message-dialog/bulk-message-dialog.component';
 import { FinanceDialogComponent } from '../../components/finance-dialog/finance-dialog.component';
 
@@ -57,21 +57,25 @@ export class ChatComponent {
 
   currentUser = this.authService.currentUser;
   balance = this.authService.balance;
+  
+  @ViewChild('messagesViewport') private messagesViewport!: ElementRef;
 
   conversations = signal<Conversation[]>([]);
   selectedConversation = signal<Conversation | null>(null);
+  isMobileChatOpen = signal(false);
   messages = signal<Message[]>([]);
   
-  searchText = signal('');
+  searchQuery = signal('');
   newMessage = signal('');
   isUrgent = signal(false);
 
   filteredConversations = computed(() => {
-    const term = this.searchText().toLowerCase();
-    return this.conversations().filter(c => 
-      c.contactName.toLowerCase().includes(term) || 
-      c.contactDocument.includes(term)
-    );
+    const searchTerm = this.searchQuery()?.toLowerCase().trim() || '';
+    return this.conversations().filter(conv => {
+      const name = (conv.recipientName || conv.contactName || '').toLowerCase();
+      const phone = (conv.recipientPhone || '').toLowerCase();
+      return name.includes(searchTerm) || phone.includes(searchTerm);
+    });
   });
 
   constructor() {
@@ -87,22 +91,63 @@ export class ChatComponent {
       }
       this.loadConversations();
     }, { allowSignalWrites: true });
+
+    // Scroll to bottom when messages change
+    effect(() => {
+      this.messages();
+      this.scrollToBottom();
+    });
+  }
+
+  private scrollToBottom() {
+    setTimeout(() => {
+      if (this.messagesViewport) {
+        const element = this.messagesViewport.nativeElement;
+        element.scrollTop = element.scrollHeight;
+      }
+    }, 100);
   }
 
   loadConversations() {
-    this.chatService.getConversations().subscribe(convs => {
-      this.conversations.set(convs);
+    const client = this.currentUser();
+    if (!client) return;
+
+    this.chatService.getConversations(client.id).subscribe((res: any) => {
+      const list = Array.isArray(res) ? res : (res.data || (res ? [res] : []));
+      this.conversations.set(list);
     });
   }
 
   loadMessages(conversationId: string) {
-    this.chatService.getMessages(conversationId).subscribe(msgs => {
-      this.messages.set(msgs);
+    this.chatService.getMessages(conversationId).subscribe((res: any) => {
+      // O backend retorna a conversa com as mensagens dentro ou o array diretamente
+      const list = Array.isArray(res) ? res : (res.messages || res.data || (res ? [res] : []));
+      this.messages.set(list);
     });
   }
 
   selectConversation(conv: Conversation) {
     this.selectedConversation.set(conv);
+    this.isMobileChatOpen.set(true);
+    this.newMessage.set('');
+    this.isUrgent.set(false);
+  }
+
+  closeChatMobile() {
+    this.isMobileChatOpen.set(false);
+  }
+
+  openFinance() {
+    this.openFinanceDialog();
+  }
+
+  openBulkSend() {
+    this.openBulkDialog();
+  }
+
+  openNewConversation() {
+    // Implementação pendente ou abrir um diálogo de busca/novo contato
+    this.snackBar.open('Funcionalidade de Nova Conversa em breve!', 'Fechar', { duration: 2000 });
   }
 
   sendMessage() {
@@ -110,26 +155,29 @@ export class ChatComponent {
     if (!content) return;
 
     const conv = this.selectedConversation();
-    const payload = {
+    const user = this.currentUser();
+    if (!conv || !user) return;
+
+    const payload: SendMessageRequest = {
+      senderId: user.id,
+      recipientPhone: conv.recipientPhone,
       content,
-      priority: (this.isUrgent() ? 'URGENT' : 'NORMAL') as 'URGENT' | 'NORMAL',
-      ...(conv ? { conversationId: conv.id } : {})
+      channel: 'WHATSAPP',
+      priority: this.isUrgent() ? 'urgente' : 'normal'
     };
 
     this.chatService.sendMessage(payload).subscribe({
-      next: (res) => {
-        this.messages.update(msgs => [...msgs, res.message]);
+      next: () => {
         this.newMessage.set('');
         this.isUrgent.set(false);
+        this.loadMessages(conv.id);
         this.loadConversations();
+        this.authService.refreshBalance().subscribe();
         this.snackBar.open('Mensagem enviada!', 'Fechar', { duration: 2000 });
       },
       error: (err) => {
-        if (err.status === 402) {
-          this.snackBar.open('Saldo insuficiente!', 'Fechar', { duration: 3000 });
-        } else {
-          this.snackBar.open('Erro ao enviar mensagem.', 'Fechar', { duration: 3000 });
-        }
+        const msg = err.status === 402 ? 'Saldo insuficiente!' : 'Erro ao enviar mensagem.';
+        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
       }
     });
   }
@@ -150,8 +198,17 @@ export class ChatComponent {
     this.authService.logout();
   }
 
-  getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  onKeyDown(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.key === 'Enter' && !keyboardEvent.shiftKey) {
+      keyboardEvent.preventDefault(); // Impede quebra de linha ao enviar com Enter
+      this.sendMessage();
+    }
+  }
+
+  getInitials(name: string | undefined): string {
+    if (!name) return 'C';
+    return name.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase().substring(0, 2);
   }
 }
 

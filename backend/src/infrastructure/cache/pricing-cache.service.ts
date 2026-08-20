@@ -31,22 +31,22 @@ export class PricingCacheService implements OnModuleInit, OnModuleDestroy {
     await this.client.disconnect();
   }
 
-  private getCacheKey(priority: string): string {
-    return `pricing:priority:${priority}`;
+  private getCacheKey(channel: string, priority: string): string {
+    return `pricing:channel:${channel}:priority:${priority}`;
   }
 
-  async getCost(priority: string): Promise<number | null> {
-    const value = await this.client.get(this.getCacheKey(priority));
+  async getCost(channel: string, priority: string): Promise<number | null> {
+    const value = await this.client.get(this.getCacheKey(channel, priority));
     return value ? parseFloat(value) : null;
   }
 
-  async setCost(priority: string, cost: number): Promise<void> {
-    await this.client.set(this.getCacheKey(priority), cost.toString(), {
+  async setCost(channel: string, priority: string, cost: number): Promise<void> {
+    await this.client.set(this.getCacheKey(channel, priority), cost.toString(), {
       EX: this.ttl,
     });
   }
 
-  async invalidate(priority: string): Promise<void> {
-    await this.client.del(this.getCacheKey(priority));
+  async invalidate(channel: string, priority: string): Promise<void> {
+    await this.client.del(this.getCacheKey(channel, priority));
   }
 }

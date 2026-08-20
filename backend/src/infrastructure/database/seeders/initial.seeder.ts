@@ -119,34 +119,25 @@ export class InitialSeeder {
         );
         await queryRunner.manager.save(transactionDebit);
         // 7. Configurar Preços de Mensagens
-        const normalPricing = await queryRunner.manager.findOne(
-          MessagePricingEntity,
-          {
-            where: { priority: 'normal' },
-          },
-        );
-        if (!normalPricing) {
-          await queryRunner.manager.save(
-            queryRunner.manager.create(MessagePricingEntity, {
-              priority: 'normal',
-              cost: 0.25,
-            }),
-          );
-        }
+        const pricings = [
+          { channel: 'WHATSAPP', priority: 'normal', cost: 0.25 },
+          { channel: 'WHATSAPP', priority: 'urgente', cost: 0.50 },
+          { channel: 'SMS', priority: 'normal', cost: 0.15 },
+          { channel: 'SMS', priority: 'urgente', cost: 0.20 },
+        ];
 
-        const urgentePricing = await queryRunner.manager.findOne(
-          MessagePricingEntity,
-          {
-            where: { priority: 'urgente' },
-          },
-        );
-        if (!urgentePricing) {
-          await queryRunner.manager.save(
-            queryRunner.manager.create(MessagePricingEntity, {
-              priority: 'urgente',
-              cost: 0.5,
-            }),
+        for (const p of pricings) {
+          const existing = await queryRunner.manager.findOne(
+            MessagePricingEntity,
+            {
+              where: { channel: p.channel, priority: p.priority },
+            },
           );
+          if (!existing) {
+            await queryRunner.manager.save(
+              queryRunner.manager.create(MessagePricingEntity, p),
+            );
+          }
         }
       }
 

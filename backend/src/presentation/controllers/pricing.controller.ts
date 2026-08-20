@@ -14,16 +14,19 @@ export class PricingController {
     return this.pricingService.findAll();
   }
 
-  @Get(':priority')
-  @ApiOperation({ summary: 'Get cost for a specific priority' })
-  async getCost(@Param('priority') priority: string) {
-    const cost = await this.pricingService.getCost(priority);
-    return { priority, cost };
+  @Get(':channel/:priority')
+  @ApiOperation({ summary: 'Get cost for a specific channel and priority' })
+  async getCost(
+    @Param('channel') channel: string,
+    @Param('priority') priority: string,
+  ) {
+    const cost = await this.pricingService.getCost(channel, priority);
+    return { channel, priority, cost };
   }
 
   @Patch()
   @ApiOperation({ summary: 'Update or create a pricing' })
   async update(@Body() dto: UpdatePricingDto) {
-    return this.pricingService.updateCost(dto.priority, dto.cost);
+    return this.pricingService.updateCost(dto.channel, dto.priority, dto.cost);
   }
 }

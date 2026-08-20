@@ -8,12 +8,15 @@ import {
 } from 'typeorm';
 
 @Entity('message_pricings')
+@Index(['channel', 'priority'], { unique: true })
 export class MessagePricingEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index({ unique: true })
-  @Column({ type: 'varchar', length: 20, unique: true })
+  @Column({ type: 'varchar', length: 20 })
+  channel!: string;
+
+  @Column({ type: 'varchar', length: 20 })
   priority!: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })

@@ -65,6 +65,7 @@ export class MessageService {
       }
 
       const unitCost = await this.pricingService.getCost(
+        dto.channel || 'WHATSAPP',
         dto.priority || 'normal',
       );
       const cost = unitCost;
@@ -178,6 +179,7 @@ export class MessageService {
       }
 
       const unitCost = await this.pricingService.getCost(
+        dto.channel,
         dto.priority || 'normal',
       );
       const totalCost = unitCost * dto.recipientPhones.length;

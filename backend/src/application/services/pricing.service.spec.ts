@@ -5,6 +5,7 @@ import { MessagePricingEntity } from '../../domain/entities/message-pricing.enti
 import { PricingCacheService } from '../../infrastructure/cache/pricing-cache.service';
 import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 describe('PricingService', () => {
   let service: PricingService;
@@ -51,7 +52,7 @@ describe('PricingService', () => {
 
   it('deve retornar custo do cache se disponível', async () => {
     (cacheService.getCost as jest.Mock).mockResolvedValue(0.25);
-    const cost = await service.getCost('normal');
+    const cost = await service.getCost('WHATSAPP', 'normal');
     expect(cost).toBe(0.25);
     expect(findOneMock).not.toHaveBeenCalled();
   });
@@ -60,26 +61,27 @@ describe('PricingService', () => {
     (cacheService.getCost as jest.Mock).mockResolvedValue(null);
     findOneMock.mockResolvedValue({
       id: 'uuid',
+      channel: 'WHATSAPP',
       priority: 'normal',
       cost: 0.25,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    } as any);
 
-    const cost = await service.getCost('normal');
+    const cost = await service.getCost('WHATSAPP', 'normal');
 
     expect(cost).toBe(0.25);
     expect(findOneMock).toHaveBeenCalledWith({
-      where: { priority: 'normal' },
+      where: { channel: 'WHATSAPP', priority: 'normal' },
     });
-    expect(setCostMock).toHaveBeenCalledWith('normal', 0.25);
+    expect(setCostMock).toHaveBeenCalledWith('WHATSAPP', 'normal', 0.25);
   });
 
   it('deve lançar NotFoundException se não encontrar no banco', async () => {
     (cacheService.getCost as jest.Mock).mockResolvedValue(null);
     findOneMock.mockResolvedValue(null);
 
-    await expect(() => service.getCost('unknown')).rejects.toThrow(
+    await expect(() => service.getCost('WHATSAPP', 'unknown')).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -87,17 +89,19 @@ describe('PricingService', () => {
   it('deve invalidar cache ao atualizar custo', async () => {
     findOneMock.mockResolvedValue({
       id: 'uuid',
+      channel: 'WHATSAPP',
       priority: 'normal',
       cost: 0.25,
     });
     (repo.save as jest.Mock).mockResolvedValue({
       id: 'uuid',
+      channel: 'WHATSAPP',
       priority: 'normal',
       cost: 0.3,
     });
 
-    await service.updateCost('normal', 0.3);
+    await service.updateCost('WHATSAPP', 'normal', 0.3);
 
-    expect(invalidateMock).toHaveBeenCalledWith('normal');
+    expect(invalidateMock).toHaveBeenCalledWith('WHATSAPP', 'normal');
   });
 });

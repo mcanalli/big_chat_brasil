@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ChatService } from '../../core/services/chat.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PricingService } from '../../core/services/pricing.service';
+import { MessagePricing } from '../../core/models/pricing.model';
 
 @Component({
   selector: 'app-bulk-message-dialog',
@@ -35,6 +37,16 @@ import { AuthService } from '../../core/services/auth.service';
                     rows="4" 
                     placeholder="5511999999999, 5511988888888..."></textarea>
           <mat-hint>Separe por vírgula ou nova linha.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nomes dos Destinatários (opcional)</mat-label>
+          <textarea matInput 
+                    name="names" 
+                    [(ngModel)]="nameList" 
+                    rows="4" 
+                    placeholder="João Silva, Maria Souza..."></textarea>
+          <mat-hint>Separe por vírgula ou nova linha na mesma ordem dos telefones.</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
@@ -86,24 +98,58 @@ import { AuthService } from '../../core/services/auth.service';
     mat-dialog-content { min-width: 450px; padding-top: 10px !important; }
   `]
 })
-export class BulkMessageDialogComponent {
+export class BulkMessageDialogComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<BulkMessageDialogComponent>);
   private chatService = inject(ChatService);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
+  private pricingService = inject(PricingService);
 
   phoneList = '';
+  nameList = '';
   messageContent = '';
   priority: 'normal' | 'urgente' = 'normal';
   channel: 'WHATSAPP' | 'SMS' = 'WHATSAPP';
   loading = false;
+  pricings: MessagePricing[] = [];
+
+  ngOnInit() {
+    this.loadPricings();
+  }
+
+  loadPricings() {
+    this.pricingService.getPricings().subscribe({
+      next: (res) => {
+        this.pricings = res;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar tabela de preços', err);
+      }
+    });
+  }
+
+  private parseList(input: string, preserveEmpty = false): string[] {
+    if (!input || input.trim() === '') return [];
+    
+    const items = input.split(/[,\n]/).map(item => item.trim());
+    
+    if (preserveEmpty) {
+      return items;
+    }
+    
+    return items.filter(item => item.length > 0);
+  }
 
   get estimatedCost(): number {
-    const count = this.phoneList.split(/[\n,]+/).filter(p => p.trim()).length;
-    // Preços fictícios para estimativa baseados na prioridade/canal
-    let basePrice = this.channel === 'WHATSAPP' ? 0.25 : 0.15;
-    if (this.priority === 'urgente') basePrice += 0.05;
-    return count * basePrice;
+    const phones = this.parseList(this.phoneList);
+    const count = phones.length;
+
+    const pricing = this.pricings.find(
+      p => p.channel === this.channel && p.priority === this.priority
+    );
+
+    const unitPrice = pricing ? Number(pricing.cost) : 0;
+    return count * unitPrice;
   }
 
   onCancel() {
@@ -111,13 +157,21 @@ export class BulkMessageDialogComponent {
   }
 
   onSend() {
-    const phones = this.phoneList
-      .split(/[\n,]+/)
-      .map(p => p.trim())
-      .filter(p => p.length > 5);
+    const phones = this.parseList(this.phoneList);
+    let names = this.parseList(this.nameList, true);
+
+    // Remove trailing empty name if it exceeds phone count (common with trailing comma/newline)
+    if (names.length === phones.length + 1 && names[names.length - 1] === '') {
+      names.pop();
+    }
 
     if (phones.length === 0) {
       this.snackBar.open('Por favor, insira ao menos um telefone válido.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    if (names.length > 0 && names.length !== phones.length) {
+      this.snackBar.open(`A quantidade de nomes (${names.length}) deve ser igual à de telefones (${phones.length}).`, 'Fechar', { duration: 5000 });
       return;
     }
 
@@ -128,6 +182,7 @@ export class BulkMessageDialogComponent {
     this.chatService.sendBulkMessages({
       senderId: currentUser.id,
       recipientPhones: phones,
+      recipientNames: names.length > 0 ? names : undefined,
       content: this.messageContent,
       channel: this.channel,
       priority: this.priority

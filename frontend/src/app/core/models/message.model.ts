@@ -1,23 +1,29 @@
 export interface Message {
-  id: string;
+  id?: string;
   conversationId: string;
   content: string;
-  sender: 'CLIENT' | 'CONTACT';
-  timestamp: string;
-  status: 'SENT' | 'DELIVERED' | 'READ' | 'QUEUED' | 'PROCESSING' | 'FAILED';
-  priority?: 'NORMAL' | 'URGENT';
+  direction: 'inbound' | 'outbound';
+  status: 'queued' | 'processing' | 'sent' | 'delivered' | 'read' | 'failed';
+  priority?: 'normal' | 'urgente';
+  timestamp: string | Date;
+  senderId?: string;
+  recipientPhone?: string;
+  channel?: 'SMS' | 'WHATSAPP';
+  cost?: number;
 }
 
 export interface SendMessageRequest {
-  conversationId?: string;
-  contactId?: string;
+  senderId: string;
+  recipientPhone: string;
   content: string;
-  priority?: 'NORMAL' | 'URGENT';
+  channel: 'SMS' | 'WHATSAPP';
+  priority?: 'normal' | 'urgente';
 }
 
 export interface SendBulkMessagesRequest {
   senderId: string;
   recipientPhones: string[];
+  recipientNames?: string[];
   content: string;
   channel: 'WHATSAPP' | 'SMS';
   priority?: 'normal' | 'urgente';
@@ -33,6 +39,6 @@ export interface SendBulkMessagesResponse {
   totalRecipients: number;
   totalCost: number;
   status: string;
-  newBalance?: number; // Adicionado para facilitar no frontend se o backend retornar
+  newBalance?: number;
 }
 

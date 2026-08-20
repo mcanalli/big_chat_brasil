@@ -1,0 +1,78 @@
+<h2 mat-dialog-title>Financeiro e Consumo</h2>
+<mat-dialog-content>
+<div class="summary-cards">
+<div class="financial-card">
+<div class="card-header">
+<span class="card-title">Tipo de Plano</span>
+<button mat-icon-button (click)="toggleConvertPlan()" color="primary" title="Alterar Plano"><mat-icon>swap_horiz</mat-icon></button>
+</div>
+<div class="card-value">{{ (currentUser()?.planType === 'prepaid' ? 'Pré-pago' : 'Pós-pago') }}</div>
+<div *ngIf="showConvertPlan" class="action-form">
+<mat-form-field appearance="outline" class="full-width compact">
+<mat-label>Novo Plano</mat-label>
+<mat-select [(ngModel)]="convertData.newPlanType">
+<mat-option value="prepaid">Pré-pago</mat-option>
+<mat-option value="postpaid">Pós-pago</mat-option>
+</mat-select>
+</mat-form-field>
+<mat-form-field *ngIf="convertData.newPlanType === 'postpaid'" appearance="outline" class="full-width compact">
+<mat-label>Limite Inicial</mat-label>
+<input matInput type="number" [(ngModel)]="convertData.initialLimit">
+</mat-form-field>
+<div class="form-actions">
+<button mat-button (click)="showConvertPlan = false">Cancelar</button>
+<button mat-raised-button color="primary" (click)="confirmConvertPlan()">Confirmar</button>
+</div>
+</div>
+</div>
+<div class="financial-card">
+<div class="card-header">
+<span class="card-title">{{ currentUser()?.planType === 'prepaid' ? 'Saldo Atual' : 'Limite Disponível' }}</span>
+<button *ngIf="currentUser()?.planType === 'prepaid'" mat-icon-button (click)="toggleAddCredits()" color="primary" title="Adicionar Créditos"><mat-icon>add_circle</mat-icon></button>
+<button *ngIf="currentUser()?.planType === 'postpaid'" mat-icon-button (click)="toggleAdjustLimit()" color="primary" title="Alterar Limite"><mat-icon>settings</mat-icon></button>
+</div>
+<div class="card-value" [class.low-balance]="isLowBalance()">{{ (currentUser()?.planType === 'prepaid' ? balanceValue : availableLimit) | currency:'BRL':'symbol':'1.2-2' }}</div>
+<small class="card-subtitle" *ngIf="currentUser()?.planType === 'postpaid'">Limite Total: {{ limitValue | currency:'BRL':'symbol':'1.2-2' }}</small>
+<div *ngIf="showAddCredits" class="action-form">
+<mat-form-field appearance="outline" class="full-width compact"><mat-label>Valor (R$)</mat-label><input matInput type="number" [(ngModel)]="creditData.amount"></mat-form-field>
+<mat-form-field appearance="outline" class="full-width compact"><mat-label>Descrição</mat-label><input matInput [(ngModel)]="creditData.description"></mat-form-field>
+<div class="form-actions"><button mat-button (click)="showAddCredits = false">Cancelar</button><button mat-raised-button color="primary" (click)="confirmAddCredits()">Adicionar</button></div>
+</div>
+<div *ngIf="showAdjustLimit" class="action-form">
+<mat-form-field appearance="outline" class="full-width compact"><mat-label>Novo Limite (R$)</mat-label><input matInput type="number" [(ngModel)]="limitData.newLimit"></mat-form-field>
+<div class="form-actions"><button mat-button (click)="showAdjustLimit = false">Cancelar</button><button mat-raised-button color="primary" (click)="confirmAdjustLimit()">Salvar</button></div>
+</div>
+</div>
+<div *ngIf="currentUser()?.planType === 'postpaid'" class="financial-card">
+<div class="card-header"><span class="card-title">Consumo Atual</span></div>
+<div class="card-value">{{ consumedValue | currency:'BRL':'symbol':'1.2-2' }}</div>
+</div>
+</div>
+<mat-tab-group (selectedTabChange)="onTabChange($event)">
+<mat-tab label="Últimas Mensagens (Custo)">
+<table mat-table [dataSource]="recentMessages" class="full-width">
+<ng-container matColumnDef="timestamp"><th mat-header-cell *matHeaderCellDef> Data </th><td mat-cell *matCellDef="let msg"> {{ msg.timestamp | date:'short' }} </td></ng-container>
+<ng-container matColumnDef="recipient"><th mat-header-cell *matHeaderCellDef> Destinatário </th><td mat-cell *matCellDef="let msg"> {{ msg.recipientPhone }} </td></ng-container>
+<ng-container matColumnDef="cost"><th mat-header-cell *matHeaderCellDef> Custo </th><td mat-cell *matCellDef="let msg"> {{ msg.cost | currency:'BRL':'symbol':'1.2-2' }} </td></ng-container>
+<ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef> Status </th><td mat-cell *matCellDef="let msg"><mat-chip-set><mat-chip [color]="getStatusColor(msg.status)" selected disabled>{{ msg.status }}</mat-chip></mat-chip-set></td></ng-container>
+<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+<tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+</table>
+<div *ngIf="recentMessages.length === 0" class="empty-state">Nenhuma mensagem encontrada.</div>
+</mat-tab>
+<mat-tab label="Extrato de Transações">
+<table mat-table [dataSource]="transactions" class="full-width">
+<ng-container matColumnDef="timestamp"><th mat-header-cell *matHeaderCellDef> Data </th><td mat-cell *matCellDef="let t"> {{ t.createdAt | date:'short' }} </td></ng-container>
+<ng-container matColumnDef="type"><th mat-header-cell *matHeaderCellDef> Tipo </th><td mat-cell *matCellDef="let t"> {{ translateTransactionType(t.type) }} </td></ng-container>
+<ng-container matColumnDef="amount"><th mat-header-cell *matHeaderCellDef> Valor </th><td mat-cell *matCellDef="let t">
+<span [class.text-success]="t.amount > 0 && t.type === 'CREDIT_PURCHASE'" [class.text-danger]="t.amount > 0 && t.type === 'MESSAGE_DEBIT'">{{ (t.type === 'MESSAGE_DEBIT' ? -t.amount : t.amount) | currency:'BRL':'symbol':'1.2-2' }}</span>
+</td></ng-container>
+<ng-container matColumnDef="description"><th mat-header-cell *matHeaderCellDef> Descrição </th><td mat-cell *matCellDef="let t"> {{ t.description }} </td></ng-container>
+<tr mat-header-row *matHeaderRowDef="transactionColumns"></tr>
+<tr mat-row *matRowDef="let row; columns: transactionColumns;"></tr>
+</table>
+<div *ngIf="transactions.length === 0" class="empty-state">Nenhuma transação encontrada.</div>
+</mat-tab>
+</mat-tab-group>
+</mat-dialog-content>
+<mat-dialog-actions align="end"><button mat-button mat-dialog-close>Fechar</button></mat-dialog-actions>

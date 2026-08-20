@@ -3,16 +3,16 @@ export interface Client {
   name: string;
   document: string;
   type: 'CPF' | 'CNPJ';
-  balance: number;
+  balance: number | string;
   planType: 'prepaid' | 'postpaid';
-  limit: number;
-  consumed: number;
+  limit: number | string;
+  consumed: number | string;
 }
 
 
 export interface AuthRequest {
-  document: string;
-  type: 'CPF' | 'CNPJ';
+  documentId: string;
+  documentType: 'CPF' | 'CNPJ';
 }
 
 export interface AuthResponse {

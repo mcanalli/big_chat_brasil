@@ -16,38 +16,39 @@ export class PricingService {
     return this.pricingRepo.find();
   }
 
-  async getCost(priority: string): Promise<number> {
-    const cachedCost = await this.cacheService.getCost(priority);
+  async getCost(channel: string, priority: string): Promise<number> {
+    const cachedCost = await this.cacheService.getCost(channel, priority);
     if (cachedCost !== null) {
       return cachedCost;
     }
 
-    const pricing = await this.pricingRepo.findOne({ where: { priority } });
+    const pricing = await this.pricingRepo.findOne({ where: { channel, priority } });
     if (!pricing) {
       throw new NotFoundException(
-        `Pricing for priority '${priority}' not found`,
+        `Pricing for channel '${channel}' and priority '${priority}' not found`,
       );
     }
 
     const cost = Number(pricing.cost);
-    await this.cacheService.setCost(priority, cost);
+    await this.cacheService.setCost(channel, priority, cost);
     return cost;
   }
 
   async updateCost(
+    channel: string,
     priority: string,
     cost: number,
   ): Promise<MessagePricingEntity> {
-    let pricing = await this.pricingRepo.findOne({ where: { priority } });
+    let pricing = await this.pricingRepo.findOne({ where: { channel, priority } });
 
     if (pricing) {
       pricing.cost = cost;
     } else {
-      pricing = this.pricingRepo.create({ priority, cost });
+      pricing = this.pricingRepo.create({ channel, priority, cost });
     }
 
     const saved = await this.pricingRepo.save(pricing);
-    await this.cacheService.invalidate(priority);
+    await this.cacheService.invalidate(channel, priority);
     return saved;
   }
 }

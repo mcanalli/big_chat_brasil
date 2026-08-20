@@ -33,8 +33,12 @@ export class AuthService {
   }
 
   login(document: string, type: 'CPF' | 'CNPJ') {
-    const payload: AuthRequest = { document, type };
-    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, payload).pipe(
+    const sanitizedDocument = document.replace(/\D/g, '');
+    const payload: AuthRequest = { 
+      documentId: sanitizedDocument, 
+      documentType: type 
+    };
+    return this.http.post<AuthResponse>(`${this.apiUrl}/auth`, payload).pipe(
       tap(response => {
         this.setSession(response);
       })
@@ -53,9 +57,24 @@ export class AuthService {
 
   refreshBalance() {
     const user = this._currentUser();
-    if (!user) return of({ balance: 0 });
-    return this.http.get<{ balance: number }>(`${this.apiUrl}/clients/${user.id}/balance`).pipe(
-      tap(res => this.updateBalance(res.balance))
+    if (!user) return of(null);
+    return this.http.get<any>(`${this.apiUrl}/clients/${user.id}/balance`).pipe(
+      tap(res => {
+        const current = this._currentUser();
+        if (current) {
+          const updated = { 
+            ...current, 
+            balance: res.balance,
+            planType: res.planType,
+            limit: res.limit,
+            consumed: res.consumed
+          };
+          this._currentUser.set(updated);
+          if (isPlatformBrowser(this.platformId)) {
+            localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+          }
+        }
+      })
     );
   }
 

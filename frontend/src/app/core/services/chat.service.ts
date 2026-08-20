@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Conversation } from '../models/conversation.model';
 import { Message, SendMessageRequest, SendMessageResponse, SendBulkMessagesRequest, SendBulkMessagesResponse } from '../models/message.model';
 import { tap } from 'rxjs';
@@ -13,18 +13,20 @@ export class ChatService {
   private authService = inject(AuthService);
   private readonly apiUrl = 'http://localhost:3000/api';
 
-  getConversations() {
-    return this.http.get<Conversation[]>(`${this.apiUrl}/conversations`);
+  getConversations(clientId?: string) {
+    let params = new HttpParams();
+    if (clientId) {
+      params = params.set('clientId', clientId);
+    }
+    return this.http.get<Conversation[]>(`${this.apiUrl}/conversations`, { params });
   }
 
   getMessages(conversationId: string) {
     return this.http.get<Message[]>(`${this.apiUrl}/conversations/${conversationId}/messages`);
   }
 
-  sendMessage(payload: SendMessageRequest) {
-    return this.http.post<SendMessageResponse>(`${this.apiUrl}/messages/send`, payload).pipe(
-      tap(res => this.authService.updateBalance(res.newBalance))
-    );
+  sendMessage(payload: any) {
+    return this.http.post<Message>(`${this.apiUrl}/messages`, payload);
   }
 
   sendBulkMessages(payload: SendBulkMessagesRequest) {
