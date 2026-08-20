@@ -1,0 +1,177 @@
+services:
+  # ==========================================
+  # 1. BANCO DE DADOS RELACIONAL (PostgreSQL)
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: bcb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bcb_db}
+      POSTGRES_USER: ${DB_USER:-bcb_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bcb_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bcb_user} -d ${DB_NAME:-bcb_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bcb-network
+
+  # ==========================================
+  # 2. CACHE & SESSÃO (Redis)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: bcb-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel notice
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bcb-network
+
+  # ==========================================
+  # 3. MESSAGE BROKER & FILAS (RabbitMQ)
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: bcb-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-bcb_mq_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-bcb_mq_password}
+    ports:
+      - "5672:5672"    # Porta AMQP
+      - "15672:15672"  # Painel de Gerenciamento Web
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bcb-network
+
+  # ==========================================
+  # 4. BACKEND API (NestJS)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: bcb-backend
+    restart: unless-stopped
+    command: npm run start:dev
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-bcb_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bcb_password}
+      DB_NAME: ${DB_NAME:-bcb_db}
+      DB_USERNAME: ${DB_USER:-bcb_user}
+      DB_DATABASE: ${DB_NAME:-bcb_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URI: amqp://${RABBITMQ_DEFAULT_USER:-bcb_mq_user}:${RABBITMQ_DEFAULT_PASS:-bcb_mq_password}@rabbitmq:5672
+      RUN_SEEDER: ${RUN_SEEDER:-true}
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bcb-network
+
+  # ==========================================
+  # 5. WORKER (NestJS)
+  # ==========================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: bcb-worker
+    restart: unless-stopped
+    command: npx nest start --watch --entryFile worker
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-bcb_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bcb_password}
+      DB_NAME: ${DB_NAME:-bcb_db}
+      DB_USERNAME: ${DB_USER:-bcb_user}
+      DB_DATABASE: ${DB_NAME:-bcb_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URI: amqp://${RABBITMQ_DEFAULT_USER:-bcb_mq_user}:${RABBITMQ_DEFAULT_PASS:-bcb_mq_password}@rabbitmq:5672
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bcb-network
+
+  # ==========================================
+  # 6. FRONTEND (Angular)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: bcb-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_URL: ${API_URL:-http://localhost:3000}
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - bcb-network
+
+networks:
+  bcb-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

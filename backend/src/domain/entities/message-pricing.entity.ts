@@ -13,7 +13,7 @@ export class MessagePricingEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'whatsapp' })
+  @Column({ default: 'WHATSAPP', nullable: true })
   channel!: string;
 
   @Column({ type: 'varchar', length: 20 })
