@@ -1,0 +1,42 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Conversation } from '../models/conversation.model';
+import { Message, SendMessageRequest, SendMessageResponse, SendBulkMessagesRequest, SendBulkMessagesResponse } from '../models/message.model';
+import { tap } from 'rxjs';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ChatService {
+  private http = inject(HttpClient);
+  private authService = inject(AuthService);
+  private readonly apiUrl = 'http://localhost:3000/api';
+
+  getConversations() {
+    return this.http.get<Conversation[]>(`${this.apiUrl}/conversations`);
+  }
+
+  getMessages(conversationId: string) {
+    return this.http.get<Message[]>(`${this.apiUrl}/conversations/${conversationId}/messages`);
+  }
+
+  sendMessage(payload: SendMessageRequest) {
+    return this.http.post<SendMessageResponse>(`${this.apiUrl}/messages/send`, payload).pipe(
+      tap(res => this.authService.updateBalance(res.newBalance))
+    );
+  }
+
+  sendBulkMessages(payload: SendBulkMessagesRequest) {
+    return this.http.post<SendBulkMessagesResponse>(`${this.apiUrl}/messages/bulk`, payload).pipe(
+      tap(res => {
+        if (res.newBalance !== undefined) {
+          this.authService.updateBalance(res.newBalance);
+        } else {
+          // Se o backend não retornar o novo saldo no bulk, podemos forçar um refresh do saldo
+          this.authService.refreshBalance().subscribe();
+        }
+      })
+    );
+  }
+}

@@ -1,0 +1,125 @@
+<div class="shell-container">
+  <mat-toolbar color="primary" class="header">
+    <span class="app-title">Big Chat Brasil</span>
+    <span class="spacer"></span>
+    
+    <div class="user-info" *ngIf="currentUser()">
+      <button mat-button [matMenuTriggerFor]="financeMenu" class="balance-btn">
+        <span class="client-name">{{ currentUser()?.name }}</span>
+        <mat-chip-set>
+          <mat-chip class="balance-chip" [highlighted]="true">
+            Saldo: {{ balance() | currency:'BRL' }}
+          </mat-chip>
+        </mat-chip-set>
+      </button>
+      <mat-menu #financeMenu="matMenu">
+        <button mat-menu-item (click)="openFinanceDialog()">
+          <mat-icon>account_balance_wallet</mat-icon>
+          <span>Extrato e Saldo</span>
+        </button>
+        <button mat-menu-item (click)="openBulkDialog()">
+          <mat-icon>campaign</mat-icon>
+          <span>Envio em Massa</span>
+        </button>
+      </mat-menu>
+    </div>
+
+    <button mat-icon-button (click)="logout()" title="Sair">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <mat-sidenav-container class="sidenav-container">
+    <!-- Lateral: Lista de Conversas -->
+    <mat-sidenav mode="side" opened class="chat-list-sidebar">
+      <div class="sidebar-header">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar conversa</mat-label>
+          <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+        <button mat-flat-button color="accent" class="new-chat-btn">
+          <mat-icon>add</mat-icon> Nova Conversa
+        </button>
+      </div>
+
+      <mat-nav-list class="conversation-list">
+        <a mat-list-item *ngFor="let conv of filteredConversations()" 
+           [activated]="selectedConversation()?.id === conv.id"
+           (click)="selectConversation(conv)"
+           class="conversation-item">
+          <div mat-ripple class="item-content">
+            <div class="avatar">{{ getInitials(conv.contactName) }}</div>
+            <div class="text-content">
+              <div class="top-row">
+                <span class="contact-name">{{ conv.contactName }}</span>
+                <span class="time">{{ conv.updatedAt | date:'HH:mm' }}</span>
+              </div>
+              <div class="bottom-row">
+                <span class="last-message">{{ conv.lastMessage?.content || 'Sem mensagens' }}</span>
+                <span class="unread-badge" *ngIf="conv.unreadCount > 0">{{ conv.unreadCount }}</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <!-- Centro: Área do Chat -->
+    <mat-sidenav-content class="chat-content">
+      <ng-container *ngIf="selectedConversation(); else noSelection">
+        <div class="chat-active-header">
+          <div class="avatar small">{{ getInitials(selectedConversation()!.contactName) }}</div>
+          <div class="header-info">
+            <span class="name">{{ selectedConversation()?.contactName }}</span>
+            <span class="status">Online</span>
+          </div>
+        </div>
+
+        <div class="message-history">
+          <div *ngFor="let msg of messages()" 
+               [ngClass]="{'msg-me': msg.sender === 'CLIENT', 'msg-them': msg.sender === 'CONTACT', 'urgent-msg': msg.priority === 'URGENT'}">
+            <div class="message-bubble">
+              <div class="urgent-tag" *ngIf="msg.priority === 'URGENT'">
+                <mat-icon inline>flash_on</mat-icon> URGENTE
+              </div>
+              <p>{{ msg.content }}</p>
+              <div class="msg-footer">
+                <span class="msg-time">{{ msg.timestamp | date:'HH:mm' }}</span>
+                <mat-icon class="status-icon" [ngClass]="msg.status.toLowerCase()" *ngIf="msg.sender === 'CLIENT'">
+                  {{ msg.status === 'SENT' || msg.status === 'DELIVERED' || msg.status === 'READ' ? 'done_all' : 'schedule' }}
+                </mat-icon>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-input-area">
+          <div class="input-container">
+            <mat-checkbox class="urgent-toggle" [ngModel]="isUrgent()" (ngModelChange)="isUrgent.set($event)">
+              Urgente ⚡
+            </mat-checkbox>
+            <div class="input-row">
+              <mat-form-field appearance="fill" class="main-input">
+                <textarea matInput placeholder="Digite sua mensagem..." 
+                          [(ngModel)]="newMessage" 
+                          (keyup.enter)="sendMessage()"
+                          rows="1"></textarea>
+              </mat-form-field>
+              <button mat-fab color="primary" (click)="sendMessage()" [disabled]="!newMessage().trim()">
+                <mat-icon>send</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #noSelection>
+        <div class="empty-state">
+          <mat-icon>chat</mat-icon>
+          <h2>Selecione uma conversa para começar</h2>
+        </div>
+      </ng-template>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

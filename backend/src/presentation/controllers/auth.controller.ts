@@ -1,7 +1,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from '../../application/services/auth.service';
-import { AuthDto } from '../dtos/auth.dto';
+import { AuthRequestDto } from '../dtos/auth.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -10,10 +10,13 @@ export class AuthController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Realizar login administrativo' })
+  @ApiOperation({ summary: 'Realizar login do cliente via documento' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
-  @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
-  login(@Body() authDto: AuthDto) {
-    return this.authService.login(authDto);
+  @ApiResponse({
+    status: 404,
+    description: 'Cliente não encontrado com o documento informado',
+  })
+  login(@Body() authRequestDto: AuthRequestDto) {
+    return this.authService.login(authRequestDto);
   }
 }

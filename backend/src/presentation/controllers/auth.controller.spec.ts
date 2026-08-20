@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from '../../application/services/auth.service';
-import { AuthDto } from '../dtos/auth.dto';
+import { AuthRequestDto } from '../dtos/auth.dto';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -10,7 +10,7 @@ describe('AuthController', () => {
   beforeEach(async () => {
     service = {
       login: jest.fn().mockReturnValue({ token: 'abc' }),
-    };
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -21,9 +21,9 @@ describe('AuthController', () => {
   });
 
   it('should login', () => {
-    const dto: AuthDto = {
-      email: 'admin@bigchatbrasil.com.br',
-      password: 'password',
+    const dto: AuthRequestDto = {
+      documentId: '12345678900',
+      documentType: 'CPF',
     };
     expect(controller.login(dto)).toEqual({ token: 'abc' });
   });
