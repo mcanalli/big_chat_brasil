@@ -1,129 +1,102 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Subject, takeUntil } from 'rxjs';
 import { ChatService } from '../../core/services/chat.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PricingService } from '../../core/services/pricing.service';
-import { MessagePricing } from '../../core/models/pricing.model';
 
 @Component({
   selector: 'app-bulk-message-dialog',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatSelectModule
+    MatSelectModule,
+    MatIconModule,
+    MatSnackBarModule
   ],
-  template: `
-    <h2 mat-dialog-title>Envio em Massa</h2>
-    <mat-dialog-content>
-      <form #bulkForm="ngForm">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Destinatários (Telefones com DDD, ex: 5511999999999)</mat-label>
-          <textarea matInput 
-                    name="phones" 
-                    [(ngModel)]="phoneList" 
-                    required 
-                    rows="4" 
-                    placeholder="5511999999999, 5511988888888..."></textarea>
-          <mat-hint>Separe por vírgula ou nova linha.</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Nomes dos Destinatários (opcional)</mat-label>
-          <textarea matInput 
-                    name="names" 
-                    [(ngModel)]="nameList" 
-                    rows="4" 
-                    placeholder="João Silva, Maria Souza..."></textarea>
-          <mat-hint>Separe por vírgula ou nova linha na mesma ordem dos telefones.</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Mensagem</mat-label>
-          <textarea matInput 
-                    name="content" 
-                    [(ngModel)]="messageContent" 
-                    required 
-                    rows="4"></textarea>
-        </mat-form-field>
-
-        <div class="row">
-          <mat-form-field appearance="outline" style="flex: 1; margin-right: 8px;">
-            <mat-label>Canal</mat-label>
-            <mat-select [(ngModel)]="channel" name="channel">
-              <mat-option value="WHATSAPP">WhatsApp</mat-option>
-              <mat-option value="SMS">SMS</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" style="flex: 1;">
-            <mat-label>Prioridade</mat-label>
-            <mat-select [(ngModel)]="priority" name="priority">
-              <mat-option value="normal">Normal</mat-option>
-              <mat-option value="urgente">Urgente</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div *ngIf="estimatedCost > 0" class="cost-estimate">
-          Custo total estimado: {{ estimatedCost | currency:'BRL' }}
-        </div>
-      </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="onCancel()">Cancelar</button>
-      <button mat-raised-button 
-              color="primary" 
-              (click)="onSend()" 
-              [disabled]="!bulkForm.form.valid || loading">
-        {{ loading ? 'Enviando...' : 'Disparar Agora' }}
-      </button>
-    </mat-dialog-actions>
-  `,
-  styles: [`
-    .full-width { width: 100%; margin-bottom: 1rem; }
-    .row { display: flex; }
-    .cost-estimate { margin-top: 10px; font-weight: bold; color: #2e7d32; border: 1px dashed #2e7d32; padding: 10px; border-radius: 4px; }
-    mat-dialog-content { min-width: 450px; padding-top: 10px !important; }
-  `]
+  templateUrl: './bulk-message-dialog.component.html',
+  styleUrls: ['./bulk-message-dialog.component.scss']
 })
-export class BulkMessageDialogComponent implements OnInit {
+export class BulkMessageDialogComponent implements OnInit, OnDestroy {
   private dialogRef = inject(MatDialogRef<BulkMessageDialogComponent>);
   private chatService = inject(ChatService);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private pricingService = inject(PricingService);
+  private fb = inject(FormBuilder);
 
-  phoneList = '';
-  nameList = '';
-  messageContent = '';
-  priority: 'normal' | 'urgente' = 'normal';
-  channel: 'WHATSAPP' | 'SMS' = 'WHATSAPP';
+  private destroy$ = new Subject<void>();
+
+  form: FormGroup;
   loading = false;
-  pricings: MessagePricing[] = [];
+  recipientCount = 0;
+  totalEstimatedCost = 0;
 
-  ngOnInit() {
-    this.loadPricings();
+  constructor() {
+    this.form = this.fb.group({
+      recipientPhones: ['', Validators.required],
+      recipientNames: [''],
+      content: ['', Validators.required],
+      channel: ['WHATSAPP', Validators.required],
+      priority: ['normal', Validators.required]
+    });
   }
 
-  loadPricings() {
-    this.pricingService.getPricings().subscribe({
+  ngOnInit() {
+    this.updateTotalCost();
+
+    this.form.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.updateTotalCost();
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  updateTotalCost() {
+    const priority = this.form.get('priority')?.value || 'normal';
+    const recipientPhones = this.form.get('recipientPhones')?.value || '';
+
+    // Processa contagem de telefones válidos
+    const phones = recipientPhones
+      .split(/[\n,]/)
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0);
+    
+    this.recipientCount = phones.length;
+
+    if (this.recipientCount === 0) {
+      this.totalEstimatedCost = 0;
+      return;
+    }
+
+    // Busca o preço unitário baseado na prioridade selecionada
+    this.pricingService.getPricingByPriority(priority).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (res) => {
-        this.pricings = res;
+        const unitCost = Number(res?.cost || 0);
+        this.totalEstimatedCost = this.recipientCount * unitCost;
       },
-      error: (err) => {
-        console.error('Erro ao carregar tabela de preços', err);
+      error: () => {
+        this.totalEstimatedCost = 0;
       }
     });
   }
@@ -140,27 +113,18 @@ export class BulkMessageDialogComponent implements OnInit {
     return items.filter(item => item.length > 0);
   }
 
-  get estimatedCost(): number {
-    const phones = this.parseList(this.phoneList);
-    const count = phones.length;
-
-    const pricing = this.pricings.find(
-      p => p.channel === this.channel && p.priority === this.priority
-    );
-
-    const unitPrice = pricing ? Number(pricing.cost) : 0;
-    return count * unitPrice;
-  }
-
   onCancel() {
     this.dialogRef.close();
   }
 
   onSend() {
-    const phones = this.parseList(this.phoneList);
-    let names = this.parseList(this.nameList, true);
+    if (this.form.invalid) return;
 
-    // Remove trailing empty name if it exceeds phone count (common with trailing comma/newline)
+    const { recipientPhones, recipientNames, content, channel, priority } = this.form.value;
+    const phones = this.parseList(recipientPhones);
+    let names = this.parseList(recipientNames, true);
+
+    // Remove trailing empty name if it exceeds phone count
     if (names.length === phones.length + 1 && names[names.length - 1] === '') {
       names.pop();
     }
@@ -183,9 +147,9 @@ export class BulkMessageDialogComponent implements OnInit {
       senderId: currentUser.id,
       recipientPhones: phones,
       recipientNames: names.length > 0 ? names : undefined,
-      content: this.messageContent,
-      channel: this.channel,
-      priority: this.priority
+      content: content,
+      channel: channel,
+      priority: priority
     }).subscribe({
       next: (res) => {
         this.snackBar.open(`Sucesso! ${res.totalRecipients} mensagens processadas. Custo: R$ ${res.totalCost.toFixed(2)}`, 'Fechar', { duration: 5000 });
@@ -199,3 +163,4 @@ export class BulkMessageDialogComponent implements OnInit {
     });
   }
 }
+

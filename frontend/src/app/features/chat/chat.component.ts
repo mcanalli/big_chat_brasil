@@ -23,6 +23,7 @@ import { Conversation } from '../../core/models/conversation.model';
 import { Message, SendMessageRequest } from '../../core/models/message.model';
 import { BulkMessageDialogComponent } from '../../components/bulk-message-dialog/bulk-message-dialog.component';
 import { FinanceDialogComponent } from '../../components/finance-dialog/finance-dialog.component';
+import { NewConversationDialogComponent } from '../../components/new-conversation-dialog/new-conversation-dialog.component';
 
 @Component({
   selector: 'app-chat',
@@ -58,7 +59,7 @@ export class ChatComponent {
   currentUser = this.authService.currentUser;
   balance = this.authService.balance;
   
-  @ViewChild('messagesViewport') private messagesViewport!: ElementRef;
+  @ViewChild('chatContainer') private chatContainer!: ElementRef;
 
   conversations = signal<Conversation[]>([]);
   selectedConversation = signal<Conversation | null>(null);
@@ -77,6 +78,46 @@ export class ChatComponent {
       return name.includes(searchTerm) || phone.includes(searchTerm);
     });
   });
+
+  getLastMessageText(conv: any): string {
+    if (!conv) return 'Nenhuma mensagem';
+    
+    // Tenta extrair a mensagem de várias estruturas comuns
+    if (typeof conv.lastMessage === 'string') return conv.lastMessage;
+    if (conv.lastMessage?.content) return conv.lastMessage.content;
+    if (conv.lastMessageContent) return conv.lastMessageContent;
+    
+    if (conv.messages && conv.messages.length > 0) {
+      const last = conv.messages[conv.messages.length - 1];
+      return last.content || last.text || '';
+    }
+    return conv.content || 'Nenhuma mensagem registrada';
+  }
+
+  getLastMessageDate(conv: any): string | Date {
+    return conv.lastMessageAt || conv.lastMessageTime || conv.lastMessage?.createdAt || conv.updatedAt || conv.createdAt;
+  }
+
+  formatConversationTime(dateVal: any): string {
+    if (!dateVal) return '';
+    const date = new Date(dateVal);
+    if (isNaN(date.getTime())) return '';
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    if (date.toDateString() === today.toDateString()) {
+      return timeStr;
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return `Ontem ${timeStr}`;
+    } else {
+      const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      return `${dateStr} ${timeStr}`;
+    }
+  }
 
   constructor() {
     this.loadConversations();
@@ -99,11 +140,10 @@ export class ChatComponent {
     });
   }
 
-  private scrollToBottom() {
+  private scrollToBottom(): void {
     setTimeout(() => {
-      if (this.messagesViewport) {
-        const element = this.messagesViewport.nativeElement;
-        element.scrollTop = element.scrollHeight;
+      if (this.chatContainer) {
+        this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
       }
     }, 100);
   }
@@ -122,8 +162,37 @@ export class ChatComponent {
     this.chatService.getMessages(conversationId).subscribe((res: any) => {
       // O backend retorna a conversa com as mensagens dentro ou o array diretamente
       const list = Array.isArray(res) ? res : (res.messages || res.data || (res ? [res] : []));
-      this.messages.set(list);
+      
+      // Ordenação Cronológica Crescente (padrão WhatsApp)
+      const sortedMessages = list.sort((a: Message, b: Message) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      
+      this.messages.set(sortedMessages);
+      this.scrollToBottom();
     });
+  }
+
+  shouldShowDateDivider(index: number): boolean {
+    const msgs = this.messages();
+    if (index === 0) return true;
+    
+    const currentDate = new Date(msgs[index].timestamp).toDateString();
+    const previousDate = new Date(msgs[index - 1].timestamp).toDateString();
+    
+    return currentDate !== previousDate;
+  }
+
+  formatDateDivider(dateSource: string | Date): string {
+    const date = new Date(dateSource);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Hoje';
+    if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
+
+    return date.toLocaleDateString('pt-BR');
   }
 
   selectConversation(conv: Conversation) {
@@ -146,8 +215,30 @@ export class ChatComponent {
   }
 
   openNewConversation() {
-    // Implementação pendente ou abrir um diálogo de busca/novo contato
-    this.snackBar.open('Funcionalidade de Nova Conversa em breve!', 'Fechar', { duration: 2000 });
+    const dialogRef = this.dialog.open(NewConversationDialogComponent, {
+      width: '500px'
+    });
+
+    dialogRef.afterClosed().subscribe((newMessage: Message | undefined) => {
+      if (newMessage) {
+        // Recarregar conversas e saldo
+        this.authService.refreshBalance().subscribe();
+        
+        const client = this.currentUser();
+        if (!client) return;
+
+        this.chatService.getConversations(client.id).subscribe((res: any) => {
+          const list = Array.isArray(res) ? res : (res.data || (res ? [res] : []));
+          this.conversations.set(list);
+
+          // Tentar encontrar a conversa que contém a nova mensagem
+          const newConv = list.find((c: Conversation) => c.id === newMessage.conversationId);
+          if (newConv) {
+            this.selectConversation(newConv);
+          }
+        });
+      }
+    });
   }
 
   sendMessage() {

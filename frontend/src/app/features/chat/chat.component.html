@@ -38,15 +38,19 @@
         @for (conv of filteredConversations(); track conv.id) {
           <mat-list-item 
             [class.active]="selectedConversation()?.id === conv.id"
-            (click)="selectConversation(conv)">
+            (click)="selectConversation(conv)"
+            class="conversation-item">
             <div matListItemAvatar class="avatar-circle">
               {{ (conv.recipientName || conv.recipientPhone || 'C')[0].toUpperCase() }}
             </div>
-            <div matListItemTitle class="font-bold">
-              {{ conv.recipientName || conv.recipientPhone || 'Sem nome' }}
-            </div>
-            <div matListItemLine class="text-subtle">
-              {{ conv.lastMessageContent || 'Clique para abrir' }}
+            <div class="conversation-info">
+              <div class="conversation-header">
+                <span class="contact-name">{{ conv.recipientName || conv.recipientPhone || 'Sem nome' }}</span>
+                <span class="last-message-time">{{ formatConversationTime(getLastMessageDate(conv)) }}</span>
+              </div>
+              <p class="last-message-preview">
+                {{ getLastMessageText(conv) }}
+              </p>
             </div>
           </mat-list-item>
         }
@@ -68,11 +72,23 @@
           </div>
         </div>
 
-        <div class="chat-body" #messagesViewport>
+        <div class="chat-body" #chatContainer>
           <div class="messages-wrapper">
-            @for (msg of messages(); track msg.id) {
+            @for (msg of messages(); track msg.id; let i = $index) {
+              <!-- Separador estilo WhatsApp -->
+              <div *ngIf="shouldShowDateDivider(i)" class="date-divider">
+                <span>{{ formatDateDivider(msg.timestamp) }}</span>
+              </div>
+
               <div class="message-row" [class.outgoing]="msg.direction === 'outbound'" [class.incoming]="msg.direction === 'inbound'">
-                <div class="message-bubble">
+                <div class="message-bubble"
+                     [class.urgent]="msg.priority === 'urgente'">
+                  <!-- Badge sutil de urgência -->
+                  <div *ngIf="msg.priority === 'urgente'" class="urgent-badge">
+                    <mat-icon>bolt</mat-icon>
+                    <span>Urgente</span>
+                  </div>
+
                   <div class="message-text">{{ msg.content }}</div>
                   <div class="message-meta">
                     <span class="time">{{ msg.timestamp | date:'HH:mm' }}</span>

@@ -13,6 +13,10 @@ export class PricingService {
     return this.http.get<MessagePricing[]>(this.apiUrl);
   }
 
+  getPricingByPriority(priority: string) {
+    return this.http.get<{ priority: string, cost: number }>(`${this.apiUrl}/${priority}`);
+  }
+
   getCost(channel: string, priority: string) {
     return this.http.get<{ channel: string, priority: string, cost: number }>(`${this.apiUrl}/${channel}/${priority}`);
   }

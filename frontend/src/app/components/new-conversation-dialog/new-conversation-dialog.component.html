@@ -1,0 +1,56 @@
+<h2 mat-dialog-title>Nova Conversa</h2>
+
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="dialog-content">
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Telefone do Destinatário</mat-label>
+        <input matInput formControlName="recipientPhone" placeholder="Ex: 11999999999" type="tel">
+        <mat-hint>Apenas números com DDD</mat-hint>
+        <mat-error *ngIf="form.get('recipientPhone')?.hasError('required')">Obrigatório</mat-error>
+        <mat-error *ngIf="form.get('recipientPhone')?.hasError('pattern')">Telefone inválido (10 ou 11 dígitos)</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Nome do Destinatário (Opcional)</mat-label>
+        <input matInput formControlName="recipientName" placeholder="Ex: João Silva">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Canal</mat-label>
+        <mat-select formControlName="channel">
+          <mat-option value="WHATSAPP">WhatsApp</mat-option>
+          <mat-option value="SMS">SMS</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Prioridade</mat-label>
+        <mat-select formControlName="priority">
+          <mat-option value="normal">Normal</mat-option>
+          <mat-option value="urgente">Urgente</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Mensagem</mat-label>
+      <textarea matInput formControlName="content" rows="4" placeholder="Digite a primeira mensagem..."></textarea>
+      <mat-error *ngIf="form.get('content')?.hasError('required')">Mensagem é obrigatória</mat-error>
+    </mat-form-field>
+
+    <div class="cost-card">
+      <mat-icon>payments</mat-icon>
+      <span>Custo estimado da mensagem: <strong>{{ estimatedCost | currency:'BRL':'symbol':'1.2-2' }}</strong></span>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close [disabled]="loading()">Cancelar</button>
+    <button mat-flat-button color="accent" type="submit" [disabled]="form.invalid || loading()">
+      {{ loading() ? 'Enviando...' : 'Iniciar e Enviar' }}
+    </button>
+  </mat-dialog-actions>
+</form>

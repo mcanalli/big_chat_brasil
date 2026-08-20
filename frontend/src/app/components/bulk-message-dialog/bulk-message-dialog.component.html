@@ -1,0 +1,63 @@
+<h2 mat-dialog-title>Envio em Massa</h2>
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Destinatários (Telefones com DDD, ex: 5511999999999)</mat-label>
+      <textarea matInput 
+                formControlName="recipientPhones" 
+                required 
+                rows="4" 
+                placeholder="5511999999999, 5511988888888..."></textarea>
+      <mat-hint>Separe por vírgula ou nova linha.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nomes dos Destinatários (opcional)</mat-label>
+      <textarea matInput 
+                formControlName="recipientNames" 
+                rows="4" 
+                placeholder="João Silva, Maria Souza..."></textarea>
+      <mat-hint>Separe por vírgula ou nova linha na mesma ordem dos telefones.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Mensagem</mat-label>
+      <textarea matInput 
+                formControlName="content" 
+                required 
+                rows="4"></textarea>
+    </mat-form-field>
+
+    <div class="row">
+      <mat-form-field appearance="outline" style="flex: 1; margin-right: 8px;">
+        <mat-label>Canal</mat-label>
+        <mat-select formControlName="channel">
+          <mat-option value="WHATSAPP">WhatsApp</mat-option>
+          <mat-option value="SMS">SMS</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="flex: 1;">
+        <mat-label>Prioridade</mat-label>
+        <mat-select formControlName="priority">
+          <mat-option value="normal">Normal</mat-option>
+          <mat-option value="urgente">Urgente</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="cost-card">
+      <mat-icon>payments</mat-icon>
+      <span>
+        Custo total estimado ({{ recipientCount }} {{ recipientCount === 1 ? 'mensagem' : 'mensagens' }}): 
+        <strong>{{ totalEstimatedCost | currency:'BRL':'symbol':'1.2-2' }}</strong>
+      </span>
+    </div>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="loading">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="onSend()" [disabled]="form.invalid || loading">
+    {{ loading ? 'Enviando...' : 'Enviar Mensagens' }}
+  </button>
+</mat-dialog-actions>

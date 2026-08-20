@@ -9,10 +9,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { FinanceService } from '../../core/services/finance.service';
 import { HttpClient } from '@angular/common/http';
+import { finalize, forkJoin, Observable, of, tap } from 'rxjs';
 
 @Component({
   selector: 'app-finance-dialog',
@@ -28,6 +30,7 @@ import { HttpClient } from '@angular/common/http';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatProgressSpinnerModule,
     FormsModule
   ],
   templateUrl: './finance-dialog.component.html',
@@ -43,7 +46,7 @@ import { HttpClient } from '@angular/common/http';
     .card-subtitle { font-size: 0.7rem; color: #666; margin-top: 4px; }
     .low-balance { color: #d32f2f; }
     .empty-state { padding: 20px; text-align: center; color: #999; }
-    mat-dialog-content { min-width: 700px; min-height: 500px; }
+    mat-dialog-content { min-width: 700px; min-height: 500px; position: relative; }
     .mat-column-cost { font-weight: bold; }
     .action-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; }
     .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
@@ -51,6 +54,7 @@ import { HttpClient } from '@angular/common/http';
     .text-danger { color: #d32f2f; }
     button[mat-icon-button] { width: 32px; height: 32px; line-height: 32px; }
     button[mat-icon-button] mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.7); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   `]
 })
 export class FinanceDialogComponent implements OnInit {
@@ -70,6 +74,7 @@ export class FinanceDialogComponent implements OnInit {
   transactionColumns: string[] = ['timestamp', 'type', 'amount', 'description'];
 
   // UI state
+  isLoading = false;
   showConvertPlan = false;
   showAddCredits = false;
   showAdjustLimit = false;
@@ -84,49 +89,83 @@ export class FinanceDialogComponent implements OnInit {
 
   onTabChange(event: any) {
     if (event.index === 1) {
-      this.loadTransactions();
+      this.loadTransactions().subscribe();
     }
   }
 
-  loadRecentMessages() {
+  loadRecentMessages(): Observable<any> {
     const user = this.currentUser();
-    if (!user) return;
-    this.http.get<any>(`http://localhost:3000/api/messages/report?senderId=${user.id}&limit=10`).subscribe(res => {
-      this.recentMessages = res.items;
-    });
+    if (!user) return of(null);
+    return this.http.get<any>(`http://localhost:3000/api/messages/report?senderId=${user.id}&limit=10`).pipe(
+      tap(res => {
+        this.recentMessages = res.items || [];
+      })
+    );
   }
 
-  loadTransactions() {
+  loadTransactions(): Observable<any> {
     const user = this.currentUser();
-    if (!user) return;
-    this.financeService.getTransactions(user.id).subscribe(res => {
-      this.transactions = res.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    });
+    if (!user) return of(null);
+    this.isLoading = true;
+    return this.financeService.getTransactions(user.id).pipe(
+      tap(res => {
+        this.transactions = (res || []).sort((a: any, b: any) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      }),
+      finalize(() => this.isLoading = false)
+    );
   }
 
   refreshData() {
-    this.authService.refreshBalance().subscribe((res: any) => {
-      // Garantir conversão numérica para evitar problemas de exibição (String para Number)
-      if (res) {
-        this.limitValue = Number(res.limit || 0);
-        this.consumedValue = Number(res.consumed || 0);
-        this.balanceValue = Number(res.balance || 0);
-        
-        // Utilize o campo 'available' do backend se fornecido, ou calcule
-        this.availableLimit = res.available !== undefined 
-          ? Number(res.available) 
-          : (this.limitValue - this.consumedValue);
+    const user = this.currentUser();
+    if (!user) return;
 
-        console.log('Dados do Balance processados:', { 
-          limitValue: this.limitValue, 
-          consumedValue: this.consumedValue, 
-          availableLimit: this.availableLimit,
-          balanceValue: this.balanceValue
-        });
+    this.isLoading = true;
+    forkJoin({
+      balance: this.authService.refreshBalance(),
+      messages: this.loadRecentMessages(),
+      transactions: this.loadTransactions()
+    }).pipe(
+      finalize(() => this.isLoading = false)
+    ).subscribe({
+      next: (results: any) => {
+        const res = results.balance;
+        if (res) {
+          this.limitValue = Number(res.limit || 0);
+          this.consumedValue = Number(res.consumed || 0);
+          this.balanceValue = Number(res.balance || 0);
+          
+          this.availableLimit = res.available !== undefined 
+            ? Number(res.available) 
+            : (this.limitValue - this.consumedValue);
+
+          console.log('Dados do Balance processados:', { 
+            limitValue: this.limitValue, 
+            consumedValue: this.consumedValue, 
+            availableLimit: this.availableLimit,
+            balanceValue: this.balanceValue
+          });
+        }
+      },
+      error: (err) => {
+        console.error('Erro ao atualizar dados:', err);
       }
-      this.loadRecentMessages();
-      this.loadTransactions();
     });
+  }
+
+  formatDateLocal(dateVal: string | Date): string {
+    if (!dateVal) return '-';
+    const date = new Date(dateVal);
+    if (isNaN(date.getTime())) return '-';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   }
 
   toggleConvertPlan() {

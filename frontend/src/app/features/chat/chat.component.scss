@@ -47,15 +47,76 @@
     border-bottom: 1px solid #f0f0f0;
   }
 
-  .conversation-list {
-    flex: 1;
-    overflow-y: auto;
+    .conversation-list {
+      flex: 1;
+      overflow-y: auto;
 
-    mat-list-item {
-      cursor: pointer;
-      &.active { background-color: #f0f4f9; }
+      .conversation-item {
+        cursor: pointer;
+        height: auto;
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        border-bottom: 1px solid #f0f0f0;
+
+        &.active {
+          background-color: #f0f4f9;
+        }
+
+        ::ng-deep .mdc-list-item__content {
+          display: flex;
+          width: 100%;
+          align-items: center;
+        }
+
+        .conversation-info {
+          flex: 1;
+          min-width: 0;
+          margin-left: 12px;
+          display: flex;
+          flex-direction: column;
+
+          .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 2px;
+
+            .contact-name {
+              font-weight: 600;
+              font-size: 0.95rem;
+              color: #111b21;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .last-message-time {
+              font-size: 0.75rem;
+              color: #667781;
+              font-weight: normal;
+              white-space: nowrap;
+              margin-left: 8px;
+            }
+          }
+
+          .last-message-preview {
+            font-size: 0.85rem;
+            color: #667781;
+            margin: 0;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+          }
+        }
+      }
     }
-  }
 }
 
 .chat-main {
@@ -108,6 +169,22 @@
         display: flex;
         flex-direction: column;
       }
+
+      .date-divider {
+        display: flex;
+        justify-content: center;
+        margin: 16px 0;
+ 
+        span {
+          background-color: #e1f5fe;
+          color: #546e7a;
+          font-size: 0.75rem;
+          font-weight: 500;
+          padding: 4px 12px;
+          border-radius: 12px;
+          box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+      }
     }
 
     .message-row {
@@ -147,6 +224,33 @@
       word-break: break-word;
       display: flex;
       flex-direction: column;
+
+      &.urgent {
+        background-color: #fff3e0 !important; // Fundo suave tom âmbar/laranja pastel
+        border-left: 4px solid #f57c00; // Borda lateral de destaque
+        color: #4e2c00;
+
+        &.outgoing {
+          background-color: #ffe0b2 !important; // Tom levemente mais quente para enviadas
+        }
+
+        .urgent-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #e65100;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+
+          mat-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+          }
+        }
+      }
 
       .message-meta {
         display: flex;

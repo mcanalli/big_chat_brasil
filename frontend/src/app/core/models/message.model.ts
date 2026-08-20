@@ -15,6 +15,7 @@ export interface Message {
 export interface SendMessageRequest {
   senderId: string;
   recipientPhone: string;
+  recipientName?: string;
   content: string;
   channel: 'SMS' | 'WHATSAPP';
   priority?: 'normal' | 'urgente';

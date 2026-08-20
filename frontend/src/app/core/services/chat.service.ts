@@ -25,8 +25,8 @@ export class ChatService {
     return this.http.get<Message[]>(`${this.apiUrl}/conversations/${conversationId}/messages`);
   }
 
-  sendMessage(payload: any) {
-    return this.http.post<Message>(`${this.apiUrl}/messages`, payload);
+  sendMessage(payload: SendMessageRequest) {
+    return this.http.post<SendMessageResponse>(`${this.apiUrl}/messages`, payload);
   }
 
   sendBulkMessages(payload: SendBulkMessagesRequest) {
