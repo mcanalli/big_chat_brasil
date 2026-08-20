@@ -11,15 +11,18 @@ describe('PricingService', () => {
   let service: PricingService;
   let cacheService: jest.Mocked<PricingCacheService>;
   let repo: jest.Mocked<Repository<MessagePricingEntity>>;
-  let findOneMock: jest.Mock;
-  let setCostMock: jest.Mock;
-  let invalidateMock: jest.Mock;
+
+  const makePricing = (cost: number) =>
+    ({
+      id: 'uuid',
+      channel: 'WHATSAPP',
+      priority: 'normal',
+      cost,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }) as MessagePricingEntity;
 
   beforeEach(async () => {
-    findOneMock = jest.fn();
-    setCostMock = jest.fn();
-    invalidateMock = jest.fn();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PricingService,
@@ -27,7 +30,7 @@ describe('PricingService', () => {
           provide: getRepositoryToken(MessagePricingEntity),
           useValue: {
             find: jest.fn(),
-            findOne: findOneMock,
+            findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
           },
@@ -36,8 +39,8 @@ describe('PricingService', () => {
           provide: PricingCacheService,
           useValue: {
             getCost: jest.fn(),
-            setCost: setCostMock,
-            invalidate: invalidateMock,
+            setCost: jest.fn(),
+            invalidate: jest.fn(),
           },
         },
       ],
@@ -51,57 +54,57 @@ describe('PricingService', () => {
   });
 
   it('deve retornar custo do cache se disponível', async () => {
-    (cacheService.getCost as jest.Mock).mockResolvedValue(0.25);
+    cacheService.getCost.mockResolvedValue(0.25);
+
     const cost = await service.getCost('WHATSAPP', 'normal');
+
     expect(cost).toBe(0.25);
-    expect(findOneMock).not.toHaveBeenCalled();
+    expect(repo.findOne).not.toHaveBeenCalled();
   });
 
   it('deve buscar do banco e salvar no cache em caso de cache miss', async () => {
-    (cacheService.getCost as jest.Mock).mockResolvedValue(null);
-    findOneMock.mockResolvedValue({
-      id: 'uuid',
-      channel: 'WHATSAPP',
-      priority: 'normal',
-      cost: 0.25,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as any);
+    cacheService.getCost.mockResolvedValue(null);
+    repo.findOne.mockResolvedValue(makePricing(0.25));
 
     const cost = await service.getCost('WHATSAPP', 'normal');
 
     expect(cost).toBe(0.25);
-    expect(findOneMock).toHaveBeenCalledWith({
+    expect(repo.findOne).toHaveBeenCalledWith({
       where: { channel: 'WHATSAPP', priority: 'normal' },
     });
-    expect(setCostMock).toHaveBeenCalledWith('WHATSAPP', 'normal', 0.25);
+    expect(cacheService.setCost).toHaveBeenCalledWith(
+      'WHATSAPP',
+      'normal',
+      0.25,
+    );
   });
 
   it('deve lançar NotFoundException se não encontrar no banco', async () => {
-    (cacheService.getCost as jest.Mock).mockResolvedValue(null);
-    findOneMock.mockResolvedValue(null);
+    cacheService.getCost.mockResolvedValue(null);
+    repo.findOne.mockResolvedValue(null);
 
-    await expect(() => service.getCost('WHATSAPP', 'unknown')).rejects.toThrow(
+    await expect(service.getCost('WHATSAPP', 'unknown')).rejects.toThrow(
       NotFoundException,
     );
   });
 
   it('deve invalidar cache ao atualizar custo', async () => {
-    findOneMock.mockResolvedValue({
-      id: 'uuid',
-      channel: 'WHATSAPP',
-      priority: 'normal',
-      cost: 0.25,
-    });
-    (repo.save as jest.Mock).mockResolvedValue({
-      id: 'uuid',
-      channel: 'WHATSAPP',
-      priority: 'normal',
+    const currentPricing = makePricing(0.25);
+    repo.findOne.mockResolvedValue(currentPricing);
+    repo.save.mockResolvedValue({
+      ...currentPricing,
       cost: 0.3,
     });
 
     await service.updateCost('WHATSAPP', 'normal', 0.3);
 
-    expect(invalidateMock).toHaveBeenCalledWith('WHATSAPP', 'normal');
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'WHATSAPP',
+        priority: 'normal',
+        cost: 0.3,
+      }),
+    );
+    expect(cacheService.invalidate).toHaveBeenCalledWith('WHATSAPP', 'normal');
   });
 });

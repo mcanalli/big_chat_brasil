@@ -26,6 +26,7 @@ describe('Message Bulk Send (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
@@ -60,7 +61,7 @@ describe('Message Bulk Send (e2e)', () => {
     }
   });
 
-  it('POST /messages/bulk - Sucesso com múltiplos destinatários', async () => {
+  it('POST /messages/bulk - Sucesso com mï¿½ltiplos destinatï¿½rios', async () => {
     const payload = {
       senderId: client.id,
       recipientPhones: ['5511900000001', '5511900000002'],
@@ -72,7 +73,7 @@ describe('Message Bulk Send (e2e)', () => {
     const response = await request(
       app.getHttpServer(),
     )
-      .post('/messages/bulk')
+      .post('/api/messages/bulk')
       .send(payload)
       .expect(201);
 
@@ -109,7 +110,7 @@ describe('Message Bulk Send (e2e)', () => {
     };
 
     await request(app.getHttpServer())
-      .post('/messages/bulk')
+      .post('/api/messages/bulk')
       .send(payload)
       .expect(402);
   });
@@ -131,13 +132,13 @@ describe('Message Bulk Send (e2e)', () => {
     const response = await request(
       app.getHttpServer(),
     )
-      .post('/messages/bulk')
+      .post('/api/messages/bulk')
       .send(payload)
       .expect(201);
 
     const body = response.body;
-    // O custo de WHATSAPP urgente deve ser 0.50 (baseado no PricingService se ele seguir o padrão)
-    // Se o custo normal é 0.25 e o urgente é 0.50, para 2 mensagens o total é 1.00
+    // O custo de WHATSAPP urgente deve ser 0.50 (baseado no PricingService se ele seguir o padrï¿½o)
+    // Se o custo normal ï¿½ 0.25 e o urgente ï¿½ 0.50, para 2 mensagens o total ï¿½ 1.00
     expect(body.totalCost).toBe(1.0);
 
     const messageRepo = dataSource.getRepository(MessageEntity);

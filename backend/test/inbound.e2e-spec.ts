@@ -27,6 +27,7 @@ describe('Webhooks Inbound (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
@@ -70,7 +71,7 @@ describe('Webhooks Inbound (e2e)', () => {
     };
 
     const response = await request(app.getHttpServer())
-      .post('/messages/inbound')
+      .post('/api/messages/inbound')
       .send(payload);
     
     expect(response.status).toBe(201);

@@ -43,6 +43,7 @@ describe('AdminController', () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     expect(await controller.addCredits('1', dto)).toEqual({
       success: true,
+      newBalance: expect.any(Number),
     });
   });
 
@@ -51,6 +52,8 @@ describe('AdminController', () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     expect(await controller.adjustLimit('1', dto)).toEqual({
       success: true,
+      newLimit: 100,
+      previousLimit: expect.any(Number),
     });
   });
 

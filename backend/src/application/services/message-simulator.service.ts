@@ -68,7 +68,8 @@ export class MessageSimulatorService implements OnModuleInit {
         true // Habilita chance de falha
       );
     } catch (error) {
-      this.logger.error(`Erro no simulador: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Erro no simulador: ${errorMessage}`);
     }
   }
 
@@ -132,7 +133,8 @@ export class MessageSimulatorService implements OnModuleInit {
       this.logger.debug(`[Simulador] Mensagem ${messageId} movida para ${status}`);
     } catch (err) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Erro ao atualizar status da mensagem ${messageId}: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Erro ao atualizar status da mensagem ${messageId}: ${errorMessage}`);
     } finally {
       await queryRunner.release();
     }
