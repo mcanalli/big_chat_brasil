@@ -16,13 +16,12 @@ O sistema utiliza uma arquitetura orientada a eventos (Event-Driven) e micro-pro
 ### Diagrama de Arquitetura
 ```mermaid
 graph TD
-    FE[Frontend Angular] <-->|REST & SSE| API[Backend API]
-    API <-->|SQL| DB[(PostgreSQL)]
-    API <-->|Cache/Lock| RD[(Redis)]
-    API -->|Queue| RMQ{RabbitMQ}
-    RMQ --> WK[Worker Process]
+    FE["Frontend (Angular)"] <-->|REST e SSE| API["Backend API (NestJS)"]
+    API <-->|SQL| DB[("PostgreSQL")]
+    API <-->|Cache e Lock| RD[("Redis")]
+    API -->|Queue| RMQ{"RabbitMQ"}
+    RMQ --> WK["Worker Process"]
     WK <-->|SQL| DB
-    WK -->|Events| RMQ
 ```
 
 ## 3. Pré-requisitos
