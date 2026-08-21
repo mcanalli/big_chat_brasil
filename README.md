@@ -62,6 +62,16 @@ Após a execução, os serviços estarão disponíveis nos seguintes endereços:
 | **PostgreSQL** | `localhost:5432` | `bcb_user` / `bcb_password` |
 | **Redis** | `localhost:6379` | - |
 
+
+### Mapeamento de Endpoints e Serviços do AI-Agent (`ai-agent:3001`)
+
+O microsserviço **AI-Agent** expõe endpoints e serviços dedicados à simulação conversacional por IA:
+
+| Endpoint | Método | Descrição |
+| :--- | :--- | :--- |
+| `POST /generate-response` | `POST` | Recebe a mensagem enviada pelo worker/backend, processa a persona simulada do cliente via Google Gemini SDK e dispara o webhook `POST /api/messages/inbound` de volta para a API Backend. |
+| **Modelos Suportados** | - | `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-flash-latest`, `gemini-flash-lite-latest` (com fallback automático resiliente). |
+
 ## 6. Configuração de Variáveis de Ambiente (`./backend/.env`)
 
 O projeto utiliza o arquivo `.env` (apontado pelo Docker Compose para o backend e microsserviços) contendo chaves cruciais:
