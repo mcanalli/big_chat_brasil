@@ -17,13 +17,13 @@ O sistema utiliza uma arquitetura orientada a eventos (Event-Driven) com micross
 ### Diagrama de Arquitetura (C4 Simplificado)
 ```mermaid
 graph TD
-    FE["Frontend (Angular v22)"] <-->|REST e SSE| API["Backend API (NestJS)"]
-    API <-->|SQL| DB[("PostgreSQL")]
-    API <-->|Cache & Lock| RD[("Redis")]
-    API -->|Queue (Normal/Urgent)| RMQ{"RabbitMQ"}
-    RMQ --> WK["Worker Process"]
-    WK <-->|SQL| DB
-    WK -->|Dispatch Inbound| AI["AI-Agent (Gemini SDK)"]
+    FE[Frontend Angular v22] -->|REST / SSE| API[Backend API NestJS]
+    API -->|SQL| DB[(PostgreSQL)]
+    API -->|Cache & Lock| RD[(Redis)]
+    API -->|Queue Normal/Urgent| RMQ{RabbitMQ}
+    RMQ --> WK[Worker Process]
+    WK -->|SQL| DB
+    WK -->|Dispatch Inbound| AI[AI-Agent Gemini SDK]
     AI -->|Webhook Inbound| API
 ```
 
