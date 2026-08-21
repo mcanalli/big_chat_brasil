@@ -1,59 +1,32 @@
-# Frontend
+# Frontend - Big Chat Brasil
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.4.
+## Arquitetura Reativa (Angular v22 + Signals + SSE)
 
-## Development server
+O **Frontend** do Big Chat Brasil foi desenvolvido em **Angular v22** utilizando componentes *Standalone*, **Angular Signals** para reatividade granular de estado, e um cliente **SSE (*Server-Sent Events*)** para receber atualizações em tempo real do backend sem necessidade de *polling*.
 
-To start a local development server, run:
+---
+
+## Configuração do Vitest + MSW (+92% de Cobertura)
+
+Os testes unitários e de integração são executados através do **Vitest** em conjunto com o **MSW (Mock Service Worker)** para interceptação de requisições HTTP e fluxos reativos, garantindo uma cobertura superior a 92%.
+
+---
+
+## Comandos de Execução e Teste
 
 ```bash
+# Instalação de dependências
+npm install
+
+# Execução do servidor de desenvolvimento
 ng serve
-```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+# Execução de testes unitários com Vitest
+ng test
 
-## Code scaffolding
+# Execução de testes com relatório de cobertura (+92%)
+npm run test:coverage
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
+# Build de produção
 ng build
 ```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

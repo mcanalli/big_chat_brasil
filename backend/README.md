@@ -1,98 +1,55 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Backend API - Big Chat Brasil
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Visão Geral
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+O **Backend** do Big Chat Brasil é construído em **NestJS (v11)** utilizando TypeORM para persistência em PostgreSQL, Redis para cache/locks e RabbitMQ para mensageria assíncrona. Ele expõe a API RESTful principal para o Frontend Angular e gerencia o controle financeiro, saldos e conversas.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Rotas REST Principais
 
-## Project setup
+### Autenticação (`/api/auth`)
+*   `POST /api/auth/login`: Autenticação de usuário/cliente e emissão de token JWT.
 
-```bash
-$ npm install
-```
+### Mensagens (`/api/messages`)
+*   `POST /api/messages`: Envio de nova mensagem (valida saldo/crédito, debita de forma atômica, persiste com status `queued` e publica no RabbitMQ).
+*   `POST /api/messages/bulk`: Envio em lote (*bulk*) de mensagens.
+*   `POST /api/messages/inbound`: Endpoint webhook que recebe respostas de clientes (processadas pelo `ai-agent`).
+*   `GET /api/messages`: Lista de mensagens.
 
-## Compile and run the project
+### Conversas (`/api/conversations`)
+*   `GET /api/conversations`: Lista todas as conversas ativas do cliente.
+*   `POST /api/conversations`: Inicia ou obtém uma conversa com um destinatário.
 
-```bash
-# development
-$ npm run start
+### Gestão de Clientes e Saldo (`/api/clients`)
+*   `GET /api/clients/:id/balance`: Consulta o saldo atual e limite de crédito do cliente.
+*   `POST /api/clients/:id/balance`: Adiciona créditos ou gerencia saldo (pré-pago / pós-pago).
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
-```
+## Modelo de Dados e Controle de Saldos
 
-## Run tests
+*   **Tipos de Cliente**: `PREPAID` (Pré-pago, exige saldo positivo) e `POSTPAID` (Pós-pago, utiliza limite de crédito).
+*   **Transações Financeiras**: Cada envio de mensagem gera uma transação financeira atômica (`financial_transactions`) rastreando o custo por canal e prioridade (`message_pricings`).
+*   **Concorrência**: Uso de locks pessimistas (`pessimistic_write`) no PostgreSQL e Redis para evitar *double-spending* em envios simultâneos.
+
+---
+
+## Comandos de Execução e Teste
 
 ```bash
-# unit tests
-$ npm run test
+# Instalação de dependências
+npm install
 
-# e2e tests
-$ npm run test:e2e
+# Desenvolvimento (watch mode)
+npm run start:dev
 
-# test coverage
-$ npm run test:cov
+# Testes unitários
+npm run test
+
+# Testes E2E
+npm run test:e2e
+
+# Cobertura de testes
+npm run test:cov
 ```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
