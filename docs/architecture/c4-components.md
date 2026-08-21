@@ -40,16 +40,16 @@ graph TB
     Controller --> MessageService
     MessageService --> QueueService
     MessageService --> TypeORM_API
-    MessageService --> Redis : Check Balance/Locks
+    MessageService -->|Check Balance/Locks| Redis
     
-    QueueService --> RabbitMQ : Publish Normal/Urgent
-    RabbitMQ --> Consumer : Consume
+    QueueService -->|Publish Normal/Urgent| RabbitMQ
+    RabbitMQ -->|Consume| Consumer
     
     Consumer --> TypeORM_Worker
     Simulator --> TypeORM_Worker
     Simulator --> QueueService_Worker
-    QueueService_Worker --> RabbitMQ : Publish Status Update
-    RabbitMQ -. "Listen (Status Updates)" .-> RTController
+    QueueService_Worker -->|Publish Status Update| RabbitMQ
+    RabbitMQ -.->|Listen Status Updates| RTController
     
     TypeORM_API --> PostgreSQL
     TypeORM_Worker --> PostgreSQL
