@@ -35,21 +35,21 @@ graph TB
     UI --> ChatService
     UI --> RealTimeService_FE
     ChatService --> Controller
-    RealTimeService_FE <.. RTController : "SSE (Status Updates)"
+    RealTimeService_FE -. "SSE (Status Updates)" .-> RTController
     
     Controller --> MessageService
     MessageService --> QueueService
     MessageService --> TypeORM_API
-    MessageService --> Redis : "Check Balance/Locks"
+    MessageService --> Redis : Check Balance/Locks
     
-    QueueService --> RabbitMQ : "Publish (Normal/Urgent)"
-    RabbitMQ --> Consumer : "Consume"
+    QueueService --> RabbitMQ : Publish Normal/Urgent
+    RabbitMQ --> Consumer : Consume
     
     Consumer --> TypeORM_Worker
     Simulator --> TypeORM_Worker
     Simulator --> QueueService_Worker
-    QueueService_Worker --> RabbitMQ : "Publish (Status Update)"
-    RabbitMQ ..> RTController : "Listen (Status Updates)"
+    QueueService_Worker --> RabbitMQ : Publish Status Update
+    RabbitMQ -. "Listen (Status Updates)" .-> RTController
     
     TypeORM_API --> PostgreSQL
     TypeORM_Worker --> PostgreSQL
