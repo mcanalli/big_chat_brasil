@@ -147,6 +147,29 @@ services:
         condition: service_healthy
     networks:
       - bcb-network
+  ai-agent:
+    build:
+      context: ./ai-agent
+      dockerfile: Dockerfile.dev
+    container_name: bcb-ai-agent-dev
+    restart: unless-stopped
+    command: npm run start:dev
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      BACKEND_URL: http://backend:3000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./ai-agent:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - bcb-network
+
+
 
 networks:
   bcb-network:

@@ -118,6 +118,43 @@ export class MessageConsumer {
       'sent',
       `Sent to provider. Provider ID: ${providerMessageId}`,
     );
+
+    // 5. Disparo assíncrono para o microserviço ai-agent (com await, ou após liberação de conexões do DB)
+    await this.dispatchToAiAgent(message);
+  }
+
+  private async dispatchToAiAgent(message: MessageEntity) {
+    try {
+      const aiAgentUrl = process.env.AI_AGENT_URL || 'http://ai-agent:3001/generate-response';
+      this.logger.log(`Dispatching message ${message.id} to AI Agent at ${aiAgentUrl}...`);
+
+      const payload = {
+        clientId: message.senderId,
+        senderId: message.senderId,
+        recipientPhone: message.recipientPhone,
+        recipientName: message.conversation?.recipientName || 'João Silva',
+        content: message.content,
+        channel: message.channel,
+      };
+
+      const response = await fetch(aiAgentUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`AI Agent responded with status ${response.status}: ${errorText}`);
+      } else {
+        this.logger.log(`Successfully dispatched message to AI Agent.`);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to dispatch message to AI Agent: ${errorMsg}`);
+    }
   }
 
   private async updateStatus(

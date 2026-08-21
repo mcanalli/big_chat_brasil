@@ -38,6 +38,11 @@ describe('MessageConsumer', () => {
       createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
     } as unknown as jest.Mocked<DataSource>;
 
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    }) as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessageConsumer,
@@ -109,3 +114,4 @@ describe('MessageConsumer', () => {
     );
   });
 });
+

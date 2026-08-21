@@ -249,9 +249,9 @@ export class MessageService {
       await queryRunner.manager.save(client);
       await queryRunner.commitTransaction();
 
-      savedMessages.forEach((msg) => {
-        this.queueService.publishMessage(msg);
-      });
+      for (const msg of savedMessages) {
+        await this.queueService.publishMessage(msg);
+      }
 
       return {
         bulkId,
